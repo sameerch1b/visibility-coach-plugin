@@ -130,10 +130,15 @@ test('text from outside is cut to size and an unsafe buy link is dropped', async
 })
 
 test('each connection says how it stands and offers its set-up', async ($, on) => {
+  const filled: string[] = []
   mock.store(on)
   mock.clock(on)
   on('ui.open', () => ({ value: { isPlaced: true } }))
-  on('prompt.fill', () => ({ isFilled: true }))
+  on('prompt.fill', (_, e) => {
+    filled.push(e.text)
+
+    return { isFilled: true }
+  })
   on('ui.toast', () => ({ value: undefined }))
   // The coach under this plugin's name, 21st.dev as a connector the owner
   // added, Higgsfield not there at all.
@@ -151,6 +156,8 @@ test('each connection says how it stands and offers its set-up', async ($, on) =
     expect(await ui.find({ key: 'setup:coach' })).toBeUndefined()
     expect(await ui.find({ key: 'setup:magic' })).toBeUndefined()
     expect((await ui.find({ key: 'setup:higgsfield' }))?.props.label).toBe('Turn On')
+    expect((await ui.find({ key: 'setup:site' }))?.props.label).toBe('Set Up')
+    expect((await ui.find({ key: 'setup:google' }))?.props.label).toBe('Set Up')
     await ui.unmount()
   }
 
@@ -160,6 +167,68 @@ test('each connection says how it stands and offers its set-up', async ($, on) =
   expect(await ui.find({ type: 'Text', text: /Needs sign-in/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /Choose higgsfield/ })).toBeDefined()
   expect((await ui.find({ key: 'setup:higgsfield' }))?.props.label).toBe('Set Up')
+
+  // An account is set up in the chat: the press writes a plain request and
+  // says a connection is not needed to start.
+  await ui.press({ key: 'setup:site' })
+  expect(filled).toContain('Help me connect my website.')
+  expect(await ui.find({ type: 'Text', text: /Not needed to start/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('the first check holds the top until results replace it', async ($, on) => {
+  const first = {
+    business: 'Harbour Plumbing',
+    standing: [
+      { label: 'Google search', finding: 'Not on the first page.', state: 'fix' },
+      { label: 'Reviews', finding: '4.8 stars from 37 reviews.', state: 'good' },
+    ],
+    next: { title: 'Approve your first change', minutes: 2 },
+  }
+  const later = {
+    ...first,
+    results: [
+      {
+        label: 'Calls from Google',
+        value: '14',
+        change: '3 more than last month',
+        tone: 'good',
+        start: '9',
+        source: 'your Monday answers',
+      },
+    ],
+    checkIn: '2026-11-16',
+  }
+  let sent: object = first
+  mock.store(on)
+  mock.clock(on)
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  // The owner's site runs on a platform this Claude is already connected to.
+  on('tool.list', () => ({ value: [tool(START), tool('mcp__Wordpress__wpcom-site-reset-get')] }))
+  on('tool.call', () => ({ result: { structuredContent: { panel: sent } } }))
+
+  await $.tool.call({ tool: START })
+
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ ...pane(), surface })
+
+    expect(await ui.find({ type: 'Text', text: /Not on the first page/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Needs work/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Nothing was connected/ })).toBeDefined()
+    expect(await ui.find({ key: 'checkin' })).toBeDefined()
+    expect(await ui.find({ key: 'setup:site' })).toBeUndefined()
+    await ui.unmount()
+  }
+
+  sent = later
+  await $.tool.call({ tool: START })
+
+  const ui = await $.ui.mount({ ...pane(), surface: 'desktop' })
+
+  expect(await ui.find({ type: 'Text', text: /Not on the first page/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /9 when you started\. From your Monday answers/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Next check-in Nov 16/ })).toBeDefined()
+  expect(await ui.find({ key: 'checkin' })).toBeUndefined()
   await ui.unmount()
 })
 

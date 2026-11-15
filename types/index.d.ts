@@ -15,6 +15,15 @@ export type CoachRow = {
   note?: string
 }
 
+/** One line of the first check: how the business looks to anyone today. */
+export type CoachCheck = {
+  /** "Google search" */
+  label: string
+  /** "Not on the first page for 'emergency plumber Manly'." */
+  finding: string
+  state: 'good' | 'fix'
+}
+
 /** One result the owner cares about, in plain words. */
 export type CoachResult = {
   /** "Calls this month" */
@@ -25,6 +34,10 @@ export type CoachResult = {
   change?: string
   /** Colors the comparison. The words carry the meaning on their own. */
   tone?: 'good' | 'bad' | 'neutral'
+  /** The value at the first check, so progress has a starting point: "9". */
+  start?: string
+  /** Where the number comes from, in the owner's words: "your Monday answers". */
+  source?: string
 }
 
 export type CoachPlan = {
@@ -39,6 +52,9 @@ export type CoachPanel = {
   business?: string
   website?: string
   plan?: CoachPlan
+  /** The first check, taken before anything is connected. Shown until there
+   * are results to show instead. */
+  standing?: CoachCheck[]
   /** The one thing to do next. One, not a list. */
   next?: { title: string; minutes?: number }
   /** Changes drafted and waiting for the owner's yes. */
@@ -47,6 +63,8 @@ export type CoachPanel = {
   results?: CoachResult[]
   /** The latest changes that went live. */
   done?: CoachRow[]
+  /** ISO date of the next weekly check-in; absent when there is none. */
+  checkIn?: string
   /** When this was read, ISO. Set by the panel, not the server. */
   asOf?: string
 }
@@ -56,6 +74,10 @@ export type CoachLink = 'on' | 'sign-in' | 'off' | 'missing' | 'error' | 'unknow
 
 export type CoachLinks = {
   coach: CoachLink
+  /** The owner's website platform: lets the coach publish what they approve. */
+  site: CoachLink
+  /** Anything that brings Google's own numbers in (calls, searches). */
+  google: CoachLink
   higgsfield: CoachLink
   magic: CoachLink
 }

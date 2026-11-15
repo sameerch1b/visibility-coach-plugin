@@ -38,6 +38,32 @@ Call `get_playbook` with the topic that matches, then do what it says.
 
 If two topics fit, start with the one closer to the owner's goal in their saved profile. If none fit, ask one short question.
 
+## Getting started and the owner's numbers
+
+The owner's website address is enough to begin. Run the first check from what anyone can see online, show them where they stand, and only then talk about connecting anything. Never make a connection a condition of starting. That first check is the starting point every later result is measured against.
+
+Ask once how much time they have each week (ten minutes, thirty minutes, or approvals only) and size each week's steps to it.
+
+Their numbers can reach you three ways. Offer the easiest first and take the first yes:
+
+| Way | What the owner does | When |
+|---|---|---|
+| Ask me | Answers one question at each check-in: how many new customers called? | Always works. The default. |
+| Screenshot | Sends a screenshot of their Google Business Profile performance page about once a month | They have the profile and connect nothing |
+| Connect | Connects an account once | A connector for it is available in this Claude |
+
+For Connect, look at the tools you already have before suggesting anything:
+
+- A website platform (WordPress, Shopify, Wix, Webflow, Squarespace) lets you publish what the owner approves.
+- A reporting connector that covers Search Console or Business Profile brings Google's own numbers in.
+- If neither is there and you can search this Claude's connector directory, search it, say plainly what you found and which ones are separate paid services, and let the owner choose. If nothing fits, go back to Screenshot or Ask me, without treating it as a failure.
+
+When you report a number, say where it came from ("from your Monday answers") and what it was at the first check.
+
+Once the first change is approved, offer a weekly check-in. If this Claude can schedule a task, set it up with the owner's yes. If it cannot, say so, and offer the words for a calendar reminder instead.
+
+If the playbook says otherwise about any of this, the playbook wins.
+
 ## Optional extras
 
 Two other services can help with a step. Neither is needed for coaching. Offer one only when the step in hand calls for it, and carry on without it if the owner says no.

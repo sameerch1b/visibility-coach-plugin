@@ -30,15 +30,24 @@ https://visibility-coach.vercel.app/mcp
 
 In Claude Code, type `/coach`. A small panel opens beside the chat and shows, in this order:
 
+- **Where you stand**: your first check, from your website address alone. Nothing to connect.
 - **Next step**: the one thing to do now, and about how long it takes.
 - **Waiting for your OK**: changes that are drafted. Nothing goes live without your yes.
-- **Results**: up to three numbers, each compared with last time in plain words.
+- **Results**: up to three numbers, each compared with last time and with where you started, and each saying where it came from.
 - **Done**: the latest changes that went live.
 - **Connections**: what is connected, and a button to set up what is not.
 
 It also opens by itself, as a small card, the first time you use the coach in a session. It never opens at start-up.
 
 The panel only displays. It reads no files, runs no programs and makes no network requests of its own; `claude plugin validate` on this folder lists everything it can call.
+
+## Your numbers
+
+You do not have to connect anything. Pick whichever is easiest:
+
+- **Ask me**: answer one question at each weekly check-in.
+- **Screenshot**: send a screenshot of your Google Business Profile performance page about once a month.
+- **Connect**: connect your website platform or a reporting tool once, and it is automatic. In the panel, press Set Up beside Your website or Google numbers and the coach finds what your Claude can connect.
 
 ## Optional extras
 

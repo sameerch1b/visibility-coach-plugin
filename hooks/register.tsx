@@ -15,6 +15,7 @@ import type {
 } from 'claude-code'
 
 import type {
+  CoachCheck,
   CoachLink,
   CoachLinks,
   CoachPanel,
@@ -40,6 +41,8 @@ const BAD = 'error'
 
 const NO_LINKS: CoachLinks = {
   coach: 'unknown',
+  site: 'unknown',
+  google: 'unknown',
   higgsfield: 'unknown',
   magic: 'unknown',
 }
@@ -47,12 +50,12 @@ const NO_LINKS: CoachLinks = {
 // Change a tag when the value's fields change: it declines what an earlier
 // version stored, which outlives a reload.
 const panel = atom({ plugin: 'visibility-coach', key: 'panel' } as const, null, {
-  shape: 'panel-1',
+  shape: 'panel-2',
 })
 const links = atom(
   { plugin: 'visibility-coach', key: 'links' } as const,
   NO_LINKS,
-  { shape: 'links-1' },
+  { shape: 'links-2' },
 )
 const now = atom({ plugin: 'visibility-coach', key: 'now' } as const, null)
 const setup = atom({ plugin: 'visibility-coach', key: 'setup' } as const, null)
@@ -93,14 +96,19 @@ const EXAMPLE: CoachPanel = {
       value: '14',
       change: '3 more than last month',
       tone: 'good',
+      start: '9',
+      source: 'your Monday answers',
     },
     {
       label: 'AI assistants naming you',
       value: '2 of 5 checks',
       change: 'Same as last month',
       tone: 'neutral',
+      start: '0 of 5',
+      source: 'our weekly check',
     },
   ],
+  checkIn: '2026-11-16',
   done: [
     { title: 'Fixed opening hours on Google', note: 'Nov 12' },
     { title: 'Added a services list', note: 'Nov 9' },
@@ -148,7 +156,26 @@ const toResults = (value: unknown): CoachResult[] =>
 
     return label === undefined || figure === undefined
       ? []
-      : [{ label, value: figure, change: text(field(one, 'change'), 60), tone }]
+      : [
+          {
+            label,
+            value: figure,
+            change: text(field(one, 'change'), 60),
+            tone,
+            start: text(field(one, 'start'), 24),
+            source: text(field(one, 'source'), 40),
+          },
+        ]
+  })
+
+const toChecks = (value: unknown): CoachCheck[] =>
+  (Array.isArray(value) ? value.slice(0, 5) : []).flatMap(one => {
+    const label = text(field(one, 'label'), 30)
+    const finding = text(field(one, 'finding'), 100)
+
+    return label === undefined || finding === undefined
+      ? []
+      : [{ label, finding, state: field(one, 'state') === 'good' ? 'good' : 'fix' }]
   })
 
 const toPanel = (raw: unknown, readAt: string): CoachPanel | undefined => {
@@ -185,9 +212,11 @@ const toPanel = (raw: unknown, readAt: string): CoachPanel | undefined => {
                 ? Math.round(minutes)
                 : undefined,
           },
+    standing: toChecks(field(raw, 'standing')),
     waiting: toRows(field(raw, 'waiting')),
     results: toResults(field(raw, 'results')),
     done: toRows(field(raw, 'done')),
+    checkIn: text(field(raw, 'checkIn'), 30),
     asOf: text(field(raw, 'asOf'), 40) ?? readAt,
   }
 }
@@ -276,7 +305,8 @@ const sense = async ($: EngineInterface): Promise<CoachLinks> => {
     coach = asked.isConnected ? 'on' : standing(asked.reason)
   }
 
-  // Higgsfield and 21st.dev count as connected however the owner added them.
+  // Accounts and extras count as connected however the owner added them: a
+  // website platform, and anything that reports Google's own numbers.
   let higgsfield: CoachLink = runs(/higgs/i) ? 'on' : 'off'
 
   if (higgsfield === 'off' && (await $.store.get(HIGGSFIELD)) === true) {
@@ -286,6 +316,12 @@ const sense = async ($: EngineInterface): Promise<CoachLinks> => {
 
   return {
     coach,
+    site: runs(/wordpress|shopify|wix|webflow|squarespace/i) ? 'on' : 'missing',
+    google: runs(
+      /search[-_ ]?console|business[-_ ]?profile|analytics|windsor|supermetrics|local[-_ ]?falcon/i,
+    )
+      ? 'on'
+      : 'missing',
     higgsfield,
     magic: runs(/21st|^magic$|magic[-_ ]?mcp/i) ? 'on' : 'missing',
   }
@@ -399,6 +435,8 @@ const planLine = (shown: CoachPanel): { words: string; color?: string } => {
 
 const LINK_NAMES: Record<keyof CoachLinks, { name: string; adds: string }> = {
   coach: { name: 'Visibility Coach', adds: 'your coach' },
+  site: { name: 'Your website', adds: 'publishes what you approve' },
+  google: { name: 'Google numbers', adds: 'calls and searches' },
   higgsfield: { name: 'Higgsfield', adds: 'photos and video' },
   magic: { name: '21st.dev Magic', adds: 'page sections' },
 }
@@ -412,7 +450,21 @@ const LINK_WORDS: Record<CoachLink, string> = {
   unknown: 'Not checked',
 }
 
+// Accounts are set up in the chat: the press only puts a plain request in
+// the message box, and the coach finds what this Claude can connect.
+const ASK_FOR: Partial<Record<keyof CoachLinks, string>> = {
+  site: 'Help me connect my website.',
+  google: 'Help me get my Google numbers in.',
+}
+
 const steps = (which: keyof CoachLinks, how: CoachLink): string[] => {
+  if (which === 'site' || which === 'google') {
+    return [
+      'Send the message in the box and the coach will find what you can connect.',
+      'Not needed to start: one question a week or a screenshot works too.',
+    ]
+  }
+
   if (which === 'magic') {
     return [
       '1. Get a free key at 21st.dev/mcp.',
@@ -505,6 +557,14 @@ const linkRow = (
       await $.store.set(HIGGSFIELD, true)
     }
 
+    const request = ASK_FOR[which]
+
+    if (request !== undefined) {
+      await fill($, request)
+
+      return
+    }
+
     const found = which === 'magic' ? how : (await look($))[which]
 
     if (found === 'on') {
@@ -569,6 +629,9 @@ const full = (
   const waiting = shown?.waiting ?? []
   const results = shown?.results ?? []
   const done = shown?.done ?? []
+  // The first check holds the top of the panel until real results replace it.
+  const standing = results.length === 0 ? (shown?.standing ?? []) : []
+  const nextCheckIn = day(shown?.checkIn, shown?.asOf?.slice(0, 4))
   const isReady = how.coach === 'on'
 
   return (
@@ -625,6 +688,35 @@ const full = (
                 onPress={() => update($, isExample, () => true)}
               />
             </Box>
+          </Box>,
+        )}
+
+      {standing.length > 0 &&
+        group(
+          ui,
+          'Where You Stand',
+          <Box flexDirection="column">
+            {standing.map(check => (
+              <Box flexDirection="column">
+                <Box justifyContent="space-between" columnGap={1}>
+                  <Text weight="medium" wrap="truncate-end">
+                    {check.label}
+                  </Text>
+                  <Text
+                    size="footnote"
+                    color={check.state === 'good' ? GOOD : WARN}
+                  >
+                    {check.state === 'good' ? '✓ Good' : '! Needs work'}
+                  </Text>
+                </Box>
+                <Text dimColor size="footnote">
+                  {check.finding}
+                </Text>
+              </Box>
+            ))}
+            <Text dimColor size="caption">
+              From what anyone can see online. Nothing was connected.
+            </Text>
           </Box>,
         )}
 
@@ -690,6 +782,16 @@ const full = (
                   {result.change}
                 </Text>
               )}
+              {(result.start !== undefined || result.source !== undefined) && (
+                <Text size="caption" dimColor>
+                  {[
+                    result.start === undefined ? undefined : `${result.start} when you started`,
+                    result.source === undefined ? undefined : `From ${result.source}`,
+                  ]
+                    .filter(part => part !== undefined)
+                    .join('. ')}
+                </Text>
+              )}
             </Box>
           )),
         )}
@@ -700,10 +802,23 @@ const full = (
         group(
           ui,
           'Connections',
-          (['coach', 'higgsfield', 'magic'] as const).map(which =>
+          (['coach', 'site', 'google', 'higgsfield', 'magic'] as const).map(which =>
             linkRow(ui, $, which, how[which], open),
           ),
         )}
+
+      {!isSample && shown !== null && nextCheckIn === undefined && isReady && (
+        <Box justifyContent="space-between" columnGap={1}>
+          <Text dimColor size="footnote">
+            No weekly check-in yet.
+          </Text>
+          <Button
+            key="checkin"
+            label="Check In Weekly"
+            onPress={() => fill($, 'Check in with me every Monday.')}
+          />
+        </Box>
+      )}
 
       {!isSample && (
         <Box justifyContent="space-between" columnGap={1}>
@@ -713,7 +828,7 @@ const full = (
             <Text dimColor size="caption">
               {day(shown?.asOf) === undefined
                 ? 'Only you see this.'
-                : `Updated ${day(shown?.asOf)}`}
+                : `Updated ${day(shown?.asOf)}${nextCheckIn === undefined ? '' : `. Next check-in ${nextCheckIn}`}`}
             </Text>
           )}
           <Button key="refresh" label="Refresh" onPress={() => refresh($)} />
