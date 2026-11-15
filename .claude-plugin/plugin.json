@@ -9,5 +9,13 @@
   "homepage": "https://github.com/sameerch1b/visibility-coach-plugin",
   "repository": "https://github.com/sameerch1b/visibility-coach-plugin",
   "license": "MIT",
-  "keywords": ["seo", "aeo", "geo", "local-search", "small-business", "ai-visibility"]
+  "keywords": [
+    "seo",
+    "aeo",
+    "geo",
+    "local-search",
+    "small-business",
+    "ai-visibility"
+  ],
+  "privacyPolicyUrl": "https://visibility-coach.vercel.app/privacy"
 }
