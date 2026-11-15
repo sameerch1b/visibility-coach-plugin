@@ -3,6 +3,16 @@
     "visibility-coach": {
       "type": "http",
       "url": "https://visibility-coach.vercel.app/mcp"
+    },
+    "clarity": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@microsoft/clarity-mcp-server@2.0.1"
+      ],
+      "env": {
+        "CLARITY_API_TOKEN": "${user_config.clarity_api_token}"
+      }
     }
   }
 }

@@ -28,13 +28,13 @@ https://visibility-coach.vercel.app/mcp
 
 ## Your panel
 
-In Claude Code, type `/coach`. One small card opens beside the chat. It shows three things:
+In Claude Code, type `/coach`. One small card opens beside the chat. It answers three questions:
 
-- **One number**, such as your calls from Google this month, against last month and against where you started.
-- **Your next step**, and about how long it takes.
-- **What is waiting for your OK.** Nothing goes live without your yes.
+- **Is it working?** One number, such as taps on Call from Google this month, against last month and against where you started. Under it: where the number was counted and the last day it covers.
+- **How healthy is my visibility?** One line: how many of the places customers look for you are in good shape. Press it and the coach walks you through each one.
+- **What do I do next, and why?** One step, about how long it takes, and one sentence on how it gets you ahead. Below it, anything waiting for your OK. Nothing goes live without your yes.
 
-Before you have a result it shows your first check instead: how many of the things we looked at need work. For anything else, ask in the chat.
+Before you have a result, your visibility health is the headline. For anything else, ask in the chat.
 
 It also opens by itself, as a small card, the first time you use the coach in a session. It never opens at start-up.
 
@@ -47,6 +47,17 @@ You do not have to connect anything. Pick whichever is easiest:
 - **Ask me**: answer one question at each weekly check-in.
 - **Screenshot**: send a screenshot of your Google Business Profile performance page about once a month.
 - **Connect**: connect your website platform or a reporting tool once, and it is automatic. Ask the coach and it finds what your Claude can connect.
+
+Every number is counted, never estimated, and the card will not show one that does not say where it came from. A number is named for exactly what was counted: a tap on your phone number is a tap, not a call. Only you, or a call-tracking number, know how many people actually rang.
+
+### Microsoft Clarity
+
+If you use Microsoft Clarity on your website, you can connect it:
+
+1. In Clarity, open Settings, Data Export, Generate new API token.
+2. In Claude Code, type `/plugin configure visibility-coach` and paste the token.
+
+The token is kept in your computer's secure storage and goes only to Microsoft's own Clarity server (`@microsoft/clarity-mcp-server`, which needs Node.js on your computer). If you leave it empty, Clarity never starts.
 
 ## Sign in
 

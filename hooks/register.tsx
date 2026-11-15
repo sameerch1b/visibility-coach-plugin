@@ -1,13 +1,16 @@
 // The Visibility Coach panel: one small card beside the chat.
 //
-// One number, one next step, one line for what is waiting. Everything else
-// is asked for in the chat.
+// It answers three questions: is it working (one number, with where it was
+// counted), how healthy am I (one line), what do I do next and why (one
+// step). Everything else is asked for in the chat.
 //
 // It only displays. It holds no method, no scoring and no playbook text: it
 // mirrors the `panel` object the Visibility Coach server sends (the contract
 // is ../types/index.d.ts). It reads no files, runs no processes and makes no
 // network requests of its own; the one server call it makes is `start_here`,
-// on the owner's own command, over the session's existing connection.
+// on the owner's own command, over the session's existing connection. It
+// also keeps Microsoft's Clarity server from starting for an owner who has
+// not set it up.
 import { atom, read, update } from 'claude-code'
 import type {
   ElementTable,
@@ -16,7 +19,13 @@ import type {
   RenderElement,
 } from 'claude-code'
 
-import type { CoachCheck, CoachLink, CoachPanel, CoachResult } from '../types'
+import type {
+  CoachCheck,
+  CoachLink,
+  CoachPanel,
+  CoachResult,
+  CoachSource,
+} from '../types'
 
 type UI = Pick<ElementTable, 'Box' | 'Text' | 'Button' | 'Link'>
 
@@ -24,6 +33,19 @@ const PANE = 'coach'
 const TITLE = 'Visibility Coach'
 // The server's key in this plugin's .mcp.json.
 const COACH = 'visibility-coach'
+// Microsoft's Clarity server, the other key there. Optional.
+const CLARITY = 'clarity'
+
+// How each source is named to the owner. A number from anywhere else is
+// not drawn: every number on the card says where it was counted.
+const SOURCES: Record<CoachSource, string> = {
+  'google-business': 'Google Business Profile',
+  'search-console': 'Google Search Console',
+  analytics: 'Google Analytics',
+  clarity: 'Microsoft Clarity',
+  screenshot: 'your screenshot',
+  owner: 'what you told me',
+}
 
 // The three meanings a color may carry. Words always carry the meaning too.
 const GOOD = 'success'
@@ -33,7 +55,7 @@ const BAD = 'error'
 // Change a tag when the value's fields change: it declines what an earlier
 // version stored, which outlives a reload.
 const panel = atom({ plugin: 'visibility-coach', key: 'panel' } as const, null, {
-  shape: 'panel-3',
+  shape: 'panel-4',
 })
 const coach = atom(
   { plugin: 'visibility-coach', key: 'coach' } as const,
@@ -52,14 +74,26 @@ const isSigningIn = atom(
 // Shown only on the owner's press, under a banner that says it is one.
 const EXAMPLE: CoachPanel = {
   business: 'Harbour Plumbing',
+  standing: [
+    { label: 'Google search', state: 'good' },
+    { label: 'Google Maps', state: 'good' },
+    { label: 'Reviews', state: 'good' },
+    { label: 'AI assistants', state: 'fix' },
+  ],
   result: {
     value: '14',
-    label: 'calls from Google this month',
+    label: 'taps on Call from Google this month',
+    source: 'google-business',
+    through: '2026-11-12',
     change: '3 more than last month',
     tone: 'good',
     start: '9',
   },
-  next: { title: 'Add the suburbs you serve to your home page', minutes: 10 },
+  next: {
+    title: 'Add the suburbs you serve',
+    minutes: 10,
+    why: 'Google shows you to people searching in the suburbs you name.',
+  },
   waiting: 2,
   checkIn: '2026-11-16',
 }
@@ -97,15 +131,21 @@ const toChecks = (value: unknown): CoachCheck[] =>
       : [{ label, state: field(one, 'state') === 'good' ? 'good' : 'fix' }]
   })
 
+/** A number is kept only when it says where it was counted. */
 const toResult = (raw: unknown): CoachResult | undefined => {
   const value = text(field(raw, 'value'), 12)
   const label = text(field(raw, 'label'), 50)
+  const source = (Object.keys(SOURCES) as CoachSource[]).find(
+    known => known === field(raw, 'source'),
+  )
 
-  return value === undefined || label === undefined
+  return value === undefined || label === undefined || source === undefined
     ? undefined
     : {
         value,
         label,
+        source,
+        through: text(field(raw, 'through'), 30),
         change: text(field(raw, 'change'), 60),
         tone: (['good', 'bad', 'neutral'] as const).find(
           known => known === field(raw, 'tone'),
@@ -124,7 +164,8 @@ const toPanel = (raw: unknown, readAt: string): CoachPanel | undefined => {
     known => known === field(plan, 'state'),
   )
   const buyUrl = text(field(plan, 'buyUrl'), 300)
-  const next = text(field(field(raw, 'next'), 'title'), 80)
+  const step = field(raw, 'next')
+  const next = text(field(step, 'title'), 80)
 
   return {
     business: text(field(raw, 'business'), 60),
@@ -137,7 +178,11 @@ const toPanel = (raw: unknown, readAt: string): CoachPanel | undefined => {
     next:
       next === undefined
         ? undefined
-        : { title: next, minutes: count(field(field(raw, 'next'), 'minutes'), 240) },
+        : {
+            title: next,
+            minutes: count(field(step, 'minutes'), 240),
+            why: text(field(step, 'why'), 140),
+          },
     waiting: count(field(raw, 'waiting'), 99),
     checkIn: text(field(raw, 'checkIn'), 30),
     asOf: text(field(raw, 'asOf'), 40) ?? readAt,
@@ -191,6 +236,14 @@ const coachTool = (tool: string): string | undefined => {
 
   return /visibility[-_ ]?coach/i.test(server) ? name : undefined
 }
+
+/** Whether a server about to join the session is the Microsoft Clarity entry
+ * this plugin lists. Never the coach's own server, and never a Clarity the
+ * owner added themselves. */
+export const isOwnClarity = (
+  e: { server: string; provider: { plugin: string } },
+  plugin: string,
+): boolean => e.provider.plugin === plugin && /(^|:)clarity$/.test(e.server)
 
 const sense = async ($: EngineInterface): Promise<CoachLink> => {
   const tools = await $.tool.list()
@@ -266,6 +319,16 @@ const refresh = async ($: EngineInterface): Promise<void> => {
   }
 }
 
+/** Lets Clarity through in a session where it was held before the owner
+ * saved their token. */
+const joinClarity = async ($: EngineInterface): Promise<void> => {
+  try {
+    await $.mcp.connect(CLARITY)
+  } catch {
+    // Clarity is an extra: the coach works without it.
+  }
+}
+
 /** Puts words in the message box for the owner to send: the panel never
  * sends anything on its own. */
 const fill = async ($: EngineInterface, words: string): Promise<void> => {
@@ -305,6 +368,17 @@ const SIGN_IN_STEPS = [
   '3. Sign in with the link we email you.',
 ]
 
+/** Visibility health in the owner's words: "3 of 4". */
+const health = (standing: CoachCheck[]): string =>
+  `${standing.filter(check => check.state === 'good').length} of ${standing.length}`
+
+/** Where the number was counted, and the last day it covers. */
+const counted = (result: CoachResult): string => {
+  const until = day(result.through)
+
+  return `From ${SOURCES[result.source]}${until === undefined ? '' : `, through ${until}`}`
+}
+
 const toneColor = (tone: CoachResult['tone']): string | undefined => {
   if (tone === 'good') {
     return GOOD
@@ -314,11 +388,12 @@ const toneColor = (tone: CoachResult['tone']): string | undefined => {
 }
 
 // ---------------------------------------------------------------------------
-// Drawing. One card, top to bottom: whose it is, the one number, the one
-// next step with the one tinted button, one line for what is waiting.
+// Drawing. One card, top to bottom: whose it is, the one number and where it
+// was counted, the one next step with the one tinted button and why it
+// matters, then one line each for visibility health and what is waiting.
 
-/** The headline: the result when there is one, else the first check, else
- * how to begin. */
+/** The headline: the result when there is one, else visibility health from
+ * the first check, else how to begin. */
 const headline = (
   { Box, Text }: UI,
   shown: CoachPanel | null,
@@ -348,6 +423,9 @@ const headline = (
             {under.join('. ')}.
           </Text>
         )}
+        <Text dimColor size="caption">
+          {counted(result)}
+        </Text>
       </Box>
     )
   }
@@ -358,13 +436,13 @@ const headline = (
     return (
       <Box flexDirection="column">
         <Text size="title" weight="bold" tabular>
-          {toFix.length} of {standing.length}
+          {health(standing)}
         </Text>
-        <Text>{toFix.length === 1 ? 'needs work' : 'need work'}</Text>
+        <Text>visibility checks in good shape</Text>
         <Text dimColor size="footnote">
           {toFix.length === 0
             ? 'Everything we checked looks good.'
-            : `${toFix.map(check => check.label).join(', ')}.`}
+            : `Needs work: ${toFix.map(check => check.label).join(', ')}.`}
         </Text>
       </Box>
     )
@@ -399,6 +477,7 @@ const full = (
     shown?.result !== undefined || (shown?.standing?.length ?? 0) > 0
   const needsSignIn = !isSample && how !== 'on' && how !== 'unknown'
   const waiting = shown?.waiting ?? 0
+  const standing = shown?.standing ?? []
   const checkIn = day(shown?.checkIn)
   const hasLapsed = shown?.plan !== undefined && shown.plan.state !== 'active'
 
@@ -423,22 +502,39 @@ const full = (
       </Box>
 
       {shown?.next !== undefined && (
-        <Box justifyContent="space-between" columnGap={1}>
-          <Box flexDirection="column">
-            <Text weight="medium">{shown.next.title}</Text>
-            {shown.next.minutes !== undefined && (
-              <Text dimColor size="footnote">
-                {shown.next.minutes} minutes
-              </Text>
-            )}
+        <Box flexDirection="column">
+          <Box justifyContent="space-between" columnGap={1}>
+            <Box flexDirection="column">
+              <Text weight="medium">{shown.next.title}</Text>
+              {shown.next.minutes !== undefined && (
+                <Text dimColor size="footnote">
+                  {shown.next.minutes} minutes
+                </Text>
+              )}
+            </Box>
+            <Button
+              key="start"
+              label="Start"
+              variant="primary"
+              onPress={() => fill($, "Let's do my next step.")}
+            />
           </Box>
-          <Button
-            key="start"
-            label="Start"
-            variant="primary"
-            onPress={() => fill($, "Let's do my next step.")}
-          />
+          {shown.next.why !== undefined && (
+            <Text dimColor size="footnote">
+              {shown.next.why}
+            </Text>
+          )}
         </Box>
+      )}
+
+      {shown?.result !== undefined && standing.length > 0 && (
+        <Button
+          key="health"
+          plain
+          onPress={() => fill($, 'Walk me through my visibility health.')}
+        >
+          {`Visibility health: ${health(standing)} good ›`}
+        </Button>
       )}
 
       {waiting > 0 && (
@@ -554,7 +650,13 @@ const show = async ($: EngineInterface): Promise<void> => {
   await look($)
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
+  // Read only to see whether it is set. The token itself is never read here,
+  // shown, stored or sent: Claude Code hands it to Microsoft's server alone.
+  const hasClarity =
+    typeof options.clarity_api_token === 'string' &&
+    options.clarity_api_token.trim() !== ''
+
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'coach',
@@ -576,6 +678,10 @@ export const register: Register = on => {
     await $.ui.open({ id: PANE, title: TITLE })
     void refresh($)
 
+    if (hasClarity) {
+      void joinClarity($)
+    }
+
     return { text: 'Visibility Coach panel opened.' }
   })
 
@@ -584,6 +690,10 @@ export const register: Register = on => {
   on('skill.prompt', async ($, e, next) => {
     if (e.pluginName === $.plugin.name) {
       await show($)
+
+      if (hasClarity) {
+        void joinClarity($)
+      }
     }
 
     return next(e)
@@ -615,6 +725,25 @@ export const register: Register = on => {
     }
 
     return ran
+  }).catch(($, e, next) => next(e))
+
+  // Microsoft Clarity ships listed but held back: it joins a session only
+  // once the owner has saved a Clarity token in this plugin's options. An
+  // owner who does not use Clarity never sees it start, fail or ask for
+  // anything. A failure here lets it through, which is harmless.
+  on('mcp.connect', ($, e, next) => {
+    if (hasClarity || !isOwnClarity(e, $.plugin.name)) {
+      return next(e)
+    }
+
+    return {
+      value: {
+        isConnected: false,
+        reason: 'disabled',
+        message:
+          'Microsoft Clarity is off until you add your Clarity token: /plugin configure visibility-coach.',
+      },
+    }
   }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {

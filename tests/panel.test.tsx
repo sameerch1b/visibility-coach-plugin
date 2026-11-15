@@ -1,5 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 
+import { isOwnClarity } from '../hooks/register'
+
 const PLUGIN = 'visibility-coach'
 const SURFACES = ['terminal', 'desktop', 'vscode', 'mobile'] as const
 const START = 'mcp__plugin_visibility-coach_visibility-coach__start_here'
@@ -21,21 +23,33 @@ const pane = (placement: 'dock' | 'widget' = 'dock') =>
 
 const PANEL = {
   business: 'Harbour Plumbing',
+  standing: [
+    { label: 'Google search', state: 'good' },
+    { label: 'Google Maps', state: 'good' },
+    { label: 'Reviews', state: 'good' },
+    { label: 'AI assistants', state: 'fix' },
+  ],
   result: {
     value: '14',
-    label: 'calls from Google this month',
+    label: 'taps on Call from Google this month',
+    source: 'google-business',
+    through: '2026-11-12',
     change: '3 more than last month',
     tone: 'good',
     start: '9',
   },
-  next: { title: 'Add the suburbs you serve', minutes: 10 },
+  next: {
+    title: 'Add the suburbs you serve',
+    minutes: 10,
+    why: 'Google shows you to people searching in the suburbs you name.',
+  },
   waiting: 2,
   checkIn: '2026-11-16',
 }
 
 const tool = (name: string) => ({ name, description: '', mcp: true })
 
-test('the card shows one number, one next step and what is waiting, on every surface', async ($, on) => {
+test('the card shows the number and its source, health, the next step and why, on every surface', async ($, on) => {
   mock.store(on)
   mock.clock(on)
   on('command.register', () => ({ value: { command: 'coach' } }))
@@ -52,11 +66,20 @@ test('the card shows one number, one next step and what is waiting, on every sur
 
     expect(await ui.find({ type: 'Text', text: /^Harbour Plumbing$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^14$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^calls from Google this month$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^taps on Call from Google this month$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^3 more than last month\. Started at 9\.$/ })).toBeDefined()
+    // Where it was counted, and the last day it covers.
+    expect(
+      await ui.find({ type: 'Text', text: /^From Google Business Profile, through Nov 12$/ }),
+    ).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^Add the suburbs you serve$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^10 minutes$/ })).toBeDefined()
+    // One sentence on why the step gets the owner ahead.
+    expect(
+      await ui.find({ type: 'Text', text: /^Google shows you to people searching in the suburbs you name\.$/ }),
+    ).toBeDefined()
     expect((await ui.find({ key: 'start' }))?.props.variant).toBe('primary')
+    expect((await ui.find({ key: 'health' }))?.text).toBe('Visibility health: 3 of 4 good ›')
     expect((await ui.find({ key: 'review' }))?.text).toBe('2 waiting for your OK ›')
     expect(await ui.find({ type: 'Text', text: /^Next check-in Nov 16$/ })).toBeDefined()
     // Nothing but the card: no setup, no connections, no other services.
@@ -66,7 +89,7 @@ test('the card shows one number, one next step and what is waiting, on every sur
 
     const small = await $.ui.mount({ ...pane('widget'), surface })
 
-    expect(await small.find({ type: 'Text', text: /^14 calls from Google this month$/ })).toBeDefined()
+    expect(await small.find({ type: 'Text', text: /^14 taps on Call from Google this month$/ })).toBeDefined()
     expect(await small.find({ type: 'Text', text: /^2 waiting for your OK$/ })).toBeDefined()
     await small.unmount()
   }
@@ -90,9 +113,14 @@ test('a press only puts words in the message box for the owner to send', async (
 
   const ui = await $.ui.mount({ ...pane(), surface: 'desktop' })
   await ui.press({ key: 'start' })
+  await ui.press({ key: 'health' })
   await ui.press({ key: 'review' })
 
-  expect(filled).toEqual(["Let's do my next step.", "Show me what's waiting for my OK."])
+  expect(filled).toEqual([
+    "Let's do my next step.",
+    'Walk me through my visibility health.',
+    "Show me what's waiting for my OK.",
+  ])
   await ui.unmount()
 })
 
@@ -141,7 +169,7 @@ test('text from outside is cut to size and an unsafe renew link is dropped', asy
       panel: {
         business: `Evil\u0007Corp ${'x'.repeat(500)}`,
         plan: { state: 'ended', buyUrl },
-        result: { value: '9'.repeat(40), label: 'calls' },
+        result: { value: '9'.repeat(40), label: 'calls', source: 'owner' },
         waiting: 100000,
       },
     },
@@ -153,6 +181,7 @@ test('text from outside is cut to size and an unsafe renew link is dropped', asy
 
   expect((await ui.find({ type: 'Text', text: /^Evil Corp/ }))?.text.length).toBe(60)
   expect((await ui.find({ type: 'Text', text: /^9+$/ }))?.text.length).toBe(12)
+  expect(await ui.find({ type: 'Text', text: /^From what you told me$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /Your plan has ended/ })).toBeDefined()
   expect(await ui.find({ type: 'Link' })).toBeUndefined()
   expect(await ui.find({ key: 'review' })).toBeUndefined()
@@ -228,10 +257,14 @@ test('the first check is the headline until a result replaces it', async ($, on)
   for (const surface of SURFACES) {
     const ui = await $.ui.mount({ ...pane(), surface })
 
-    expect(await ui.find({ type: 'Text', text: /^3 of 4$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^need work$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^Google search, Google Maps, AI assistants\.$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^1 of 4$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^visibility checks in good shape$/ })).toBeDefined()
+    expect(
+      await ui.find({ type: 'Text', text: /^Needs work: Google search, Google Maps, AI assistants\.$/ }),
+    ).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^Approve your opening hours$/ })).toBeDefined()
+    // Health is the headline here, so it is not repeated as a line.
+    expect(await ui.find({ key: 'health' })).toBeUndefined()
     await ui.unmount()
   }
 
@@ -240,9 +273,63 @@ test('the first check is the headline until a result replaces it', async ($, on)
 
   const ui = await $.ui.mount({ ...pane(), surface: 'desktop' })
 
-  expect(await ui.find({ type: 'Text', text: /^3 of 4$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^1 of 4$/ })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: /^14$/ })).toBeDefined()
+  expect((await ui.find({ key: 'health' }))?.text).toBe('Visibility health: 1 of 4 good ›')
   await ui.unmount()
+})
+
+test('a number that does not say where it was counted is not drawn', async ($, on) => {
+  let source: string | undefined
+  mock.store(on)
+  mock.clock(on)
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('tool.list', () => ({ value: [tool(START)] }))
+  on('tool.call', () => ({
+    result: {
+      structuredContent: {
+        panel: {
+          business: 'Harbour Plumbing',
+          result: { value: '14', label: 'calls this month', source },
+          next: { title: 'Add the suburbs you serve' },
+        },
+      },
+    },
+  }))
+
+  // No source, then one the panel has never heard of: no number either time.
+  for (source of [undefined, 'a guess']) {
+    await $.tool.call({ tool: START })
+
+    const ui = await $.ui.mount({ ...pane(), surface: 'desktop' })
+
+    expect(await ui.find({ type: 'Text', text: /^14$/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /^calls this month$/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /^Add the suburbs you serve$/ })).toBeDefined()
+    await ui.unmount()
+  }
+
+  source = 'clarity'
+  await $.tool.call({ tool: START })
+
+  const ui = await $.ui.mount({ ...pane(), surface: 'desktop' })
+
+  expect(await ui.find({ type: 'Text', text: /^14$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^From Microsoft Clarity$/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test("only this plugin's own Clarity entry is ever held back", () => {
+  const ours = { server: 'plugin:visibility-coach:clarity', provider: { plugin: PLUGIN } }
+
+  expect(isOwnClarity(ours, PLUGIN)).toBe(true)
+  // A Clarity the owner added themselves, under any name.
+  expect(isOwnClarity({ ...ours, provider: { plugin: 'other' } }, PLUGIN)).toBe(false)
+  expect(isOwnClarity({ ...ours, server: 'Microsoft Clarity' }, PLUGIN)).toBe(false)
+  // The coach's own server.
+  expect(
+    isOwnClarity({ ...ours, server: 'plugin:visibility-coach:visibility-coach' }, PLUGIN),
+  ).toBe(false)
 })
 
 test('with nothing read yet the card says how to begin and can show an example', async ($, on) => {
