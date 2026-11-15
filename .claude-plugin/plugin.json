@@ -1,0 +1,13 @@
+{
+  "name": "visibility-coach",
+  "displayName": "Visibility Coach",
+  "version": "0.1.0",
+  "description": "Help the right customers find your business on Google and AI search. Know what to improve, approve the changes, see what happened.",
+  "author": {
+    "name": "Sameer Chib"
+  },
+  "homepage": "https://github.com/sameerch1b/visibility-coach-plugin",
+  "repository": "https://github.com/sameerch1b/visibility-coach-plugin",
+  "license": "MIT",
+  "keywords": ["seo", "aeo", "geo", "local-search", "small-business", "ai-visibility"]
+}
