@@ -3,6 +3,10 @@
     "visibility-coach": {
       "type": "http",
       "url": "https://visibility-coach.vercel.app/mcp"
+    },
+    "higgsfield": {
+      "type": "http",
+      "url": "https://mcp.higgsfield.ai/mcp"
     }
   }
 }

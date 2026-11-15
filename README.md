@@ -26,6 +26,27 @@ https://visibility-coach.vercel.app/mcp
 - Pro and Max: Customize > Connectors > + Add > Add custom connector.
 - Team and Enterprise: an owner adds it in Organization settings > Connectors, then members open Customize > Connectors and click Connect.
 
+## Your panel
+
+In Claude Code, type `/coach`. A small panel opens beside the chat and shows, in this order:
+
+- **Next step**: the one thing to do now, and about how long it takes.
+- **Waiting for your OK**: changes that are drafted. Nothing goes live without your yes.
+- **Results**: up to three numbers, each compared with last time in plain words.
+- **Done**: the latest changes that went live.
+- **Connections**: what is connected, and a button to set up what is not.
+
+It also opens by itself, as a small card, the first time you use the coach in a session. It never opens at start-up.
+
+The panel only displays. It reads no files, runs no programs and makes no network requests of its own; `claude plugin validate` on this folder lists everything it can call.
+
+## Optional extras
+
+Neither is needed for coaching. Each is a separate company with its own account and cost.
+
+- **Higgsfield** (photos and video). Listed with the plugin but off. In the panel, press Turn on beside Higgsfield, then sign in. On claude.ai and Cowork, add a custom connector with the URL `https://mcp.higgsfield.ai/mcp`.
+- **21st.dev Magic** (page sections). Get a key at [21st.dev/mcp](https://21st.dev/mcp), then in Claude Code run `/plugin marketplace add 21st-dev/magic-mcp` and `/plugin install 21st`.
+
 ## Sign in
 
 Enter your email and click the sign-in link we send you. No password.
@@ -44,4 +65,6 @@ Say "help me show up on Google" or "grill me" in any chat.
 
 ---
 
-Unofficial, not affiliated with Anthropic. MIT licensed.
+Unofficial, not affiliated with Anthropic, Higgsfield or 21st.dev.
+
+The plugin in this repository is MIT licensed. The Visibility Coach service, its playbooks and its coaching method are not in this repository and are not covered by that license.
