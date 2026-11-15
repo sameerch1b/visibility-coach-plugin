@@ -1,7 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
 
-import { isOwnHiggsfield } from '../hooks/register'
-
 const PLUGIN = 'visibility-coach'
 const SURFACES = ['terminal', 'desktop', 'vscode', 'mobile'] as const
 const START = 'mcp__plugin_visibility-coach_visibility-coach__start_here'
@@ -23,19 +21,21 @@ const pane = (placement: 'dock' | 'widget' = 'dock') =>
 
 const PANEL = {
   business: 'Harbour Plumbing',
-  website: 'harbourplumbing.example',
-  plan: { state: 'active', until: '2027-03-01' },
+  result: {
+    value: '14',
+    label: 'calls from Google this month',
+    change: '3 more than last month',
+    tone: 'good',
+    start: '9',
+  },
   next: { title: 'Add the suburbs you serve', minutes: 10 },
-  waiting: [{ title: 'New home page title', note: 'Home page' }],
-  results: [
-    { label: 'Calls from Google', value: '14', change: '3 more than last month', tone: 'good' },
-  ],
-  done: [{ title: 'Fixed opening hours', note: 'Nov 12' }],
+  waiting: 2,
+  checkIn: '2026-11-16',
 }
 
 const tool = (name: string) => ({ name, description: '', mcp: true })
 
-test('the panel shows what the coach sent, on every surface', async ($, on) => {
+test('the card shows one number, one next step and what is waiting, on every surface', async ($, on) => {
   mock.store(on)
   mock.clock(on)
   on('command.register', () => ({ value: { command: 'coach' } }))
@@ -50,22 +50,50 @@ test('the panel shows what the coach sent, on every surface', async ($, on) => {
   for (const surface of SURFACES) {
     const ui = await $.ui.mount({ ...pane(), surface })
 
-    expect(await ui.find({ type: 'Text', text: /Harbour Plumbing/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Plan active to Mar 1, 2027/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Add the suburbs you serve/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /About 10 minutes/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /New home page title/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Nothing goes live without your yes/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /3 more than last month/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Fixed opening hours/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Harbour Plumbing$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^14$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^calls from Google this month$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^3 more than last month\. Started at 9\.$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Add the suburbs you serve$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^10 minutes$/ })).toBeDefined()
+    expect((await ui.find({ key: 'start' }))?.props.variant).toBe('primary')
+    expect((await ui.find({ key: 'review' }))?.text).toBe('2 waiting for your OK ›')
+    expect(await ui.find({ type: 'Text', text: /^Next check-in Nov 16$/ })).toBeDefined()
+    // Nothing but the card: no setup, no connections, no other services.
+    expect(await ui.find({ key: 'sign-in' })).toBeUndefined()
+    expect(await ui.find({ key: 'example' })).toBeUndefined()
     await ui.unmount()
 
     const small = await $.ui.mount({ ...pane('widget'), surface })
 
-    expect(await small.find({ type: 'Text', text: /Add the suburbs you serve/ })).toBeDefined()
-    expect(await small.find({ type: 'Text', text: /1 waiting for your OK/ })).toBeDefined()
+    expect(await small.find({ type: 'Text', text: /^14 calls from Google this month$/ })).toBeDefined()
+    expect(await small.find({ type: 'Text', text: /^2 waiting for your OK$/ })).toBeDefined()
     await small.unmount()
   }
+})
+
+test('a press only puts words in the message box for the owner to send', async ($, on) => {
+  const filled: string[] = []
+  mock.store(on)
+  mock.clock(on)
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.toast', () => ({ value: undefined }))
+  on('prompt.fill', (_, e) => {
+    filled.push(e.text)
+
+    return { isFilled: true }
+  })
+  on('tool.list', () => ({ value: [tool(START)] }))
+  on('tool.call', () => ({ result: { structuredContent: { panel: PANEL } } }))
+
+  await $.tool.call({ tool: START })
+
+  const ui = await $.ui.mount({ ...pane(), surface: 'desktop' })
+  await ui.press({ key: 'start' })
+  await ui.press({ key: 'review' })
+
+  expect(filled).toEqual(["Let's do my next step.", "Show me what's waiting for my OK."])
+  await ui.unmount()
 })
 
 test('the result of a coach call reaches the model unchanged', async ($, on) => {
@@ -102,7 +130,8 @@ test('a call to any other tool opens nothing and reads nothing', async ($, on) =
   expect(lists).toBe(0)
 })
 
-test('text from outside is cut to size and an unsafe buy link is dropped', async ($, on) => {
+test('text from outside is cut to size and an unsafe renew link is dropped', async ($, on) => {
+  let buyUrl = 'javascript:alert(1)'
   mock.store(on)
   mock.clock(on)
   on('ui.open', () => ({ value: { isPlaced: true } }))
@@ -111,8 +140,9 @@ test('text from outside is cut to size and an unsafe buy link is dropped', async
     result: {
       panel: {
         business: `Evil\u0007Corp ${'x'.repeat(500)}`,
-        plan: { state: 'ended', buyUrl: 'javascript:alert(1)' },
-        waiting: Array.from({ length: 40 }, (_, at) => ({ title: `Change ${at}` })),
+        plan: { state: 'ended', buyUrl },
+        result: { value: '9'.repeat(40), label: 'calls' },
+        waiting: 100000,
       },
     },
   }))
@@ -120,91 +150,77 @@ test('text from outside is cut to size and an unsafe buy link is dropped', async
   await $.tool.call({ tool: START })
 
   const ui = await $.ui.mount({ ...pane(), surface: 'desktop' })
-  const title = await ui.find({ type: 'Text', text: /^Evil Corp/ })
 
-  expect(title?.text.length).toBe(60)
-  expect(await ui.find({ type: 'Link', text: /See plans/ })).toBeUndefined()
-  expect(await ui.find({ type: 'Text', text: /Change 2/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Change 3/ })).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /^Evil Corp/ }))?.text.length).toBe(60)
+  expect((await ui.find({ type: 'Text', text: /^9+$/ }))?.text.length).toBe(12)
+  expect(await ui.find({ type: 'Text', text: /Your plan has ended/ })).toBeDefined()
+  expect(await ui.find({ type: 'Link' })).toBeUndefined()
+  expect(await ui.find({ key: 'review' })).toBeUndefined()
   await ui.unmount()
+
+  buyUrl = 'https://example.com/renew'
+  await $.tool.call({ tool: START })
+
+  const again = await $.ui.mount({ ...pane(), surface: 'desktop' })
+
+  expect(await again.find({ type: 'Link' })).toBeDefined()
+  await again.unmount()
 })
 
-test('each connection says how it stands and offers its set-up', async ($, on) => {
+test('signed out, the card offers one thing: sign in', async ($, on) => {
   const filled: string[] = []
   mock.store(on)
   mock.clock(on)
   on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.toast', () => ({ value: undefined }))
   on('prompt.fill', (_, e) => {
     filled.push(e.text)
 
     return { isFilled: true }
   })
-  on('ui.toast', () => ({ value: undefined }))
-  // The coach under this plugin's name, 21st.dev as a connector the owner
-  // added, Higgsfield not there at all.
-  on('tool.list', () => ({ value: [tool(START), tool('mcp__Magic_MCP__search')] }))
+  // The coach's server is listed but waits on sign-in: it offers no tools,
+  // and a call to it is refused.
+  on('tool.list', () => ({ value: [] }))
   on('mcp.connect', () => ({
     value: { isConnected: false, reason: 'auth', message: 'needs sign-in' },
   }))
-  on('tool.call', () => ({ result: {} }))
+  on('tool.call', () => ({ deny: 'Not signed in.' }))
 
   await $.tool.call({ tool: START })
 
   for (const surface of SURFACES) {
     const ui = await $.ui.mount({ ...pane(), surface })
 
-    expect(await ui.find({ key: 'setup:coach' })).toBeUndefined()
-    expect(await ui.find({ key: 'setup:magic' })).toBeUndefined()
-    expect((await ui.find({ key: 'setup:higgsfield' }))?.props.label).toBe('Turn On')
-    expect((await ui.find({ key: 'setup:site' }))?.props.label).toBe('Set Up')
-    expect((await ui.find({ key: 'setup:google' }))?.props.label).toBe('Set Up')
+    expect(await ui.find({ type: 'Text', text: /^Sign in to begin$/ })).toBeDefined()
+    expect((await ui.find({ key: 'sign-in' }))?.props.variant).toBe('primary')
+    expect(await ui.find({ key: 'start' })).toBeUndefined()
     await ui.unmount()
   }
 
   const ui = await $.ui.mount({ ...pane(), surface: 'desktop' })
-  await ui.press({ key: 'setup:higgsfield' })
+  await ui.press({ key: 'sign-in' })
 
-  expect(await ui.find({ type: 'Text', text: /Needs sign-in/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Choose higgsfield/ })).toBeDefined()
-  expect((await ui.find({ key: 'setup:higgsfield' }))?.props.label).toBe('Set Up')
-
-  // An account is set up in the chat: the press writes a plain request and
-  // says a connection is not needed to start.
-  await ui.press({ key: 'setup:site' })
-  expect(filled).toContain('Help me connect my website.')
-  expect(await ui.find({ type: 'Text', text: /Not needed to start/ })).toBeDefined()
+  expect(filled).toEqual(['/mcp'])
+  expect(await ui.find({ type: 'Text', text: /Choose visibility-coach/ })).toBeDefined()
   await ui.unmount()
 })
 
-test('the first check holds the top until results replace it', async ($, on) => {
+test('the first check is the headline until a result replaces it', async ($, on) => {
   const first = {
     business: 'Harbour Plumbing',
     standing: [
-      { label: 'Google search', finding: 'Not on the first page.', state: 'fix' },
-      { label: 'Reviews', finding: '4.8 stars from 37 reviews.', state: 'good' },
+      { label: 'Google search', state: 'fix' },
+      { label: 'Google Maps', state: 'fix' },
+      { label: 'AI assistants', state: 'fix' },
+      { label: 'Reviews', state: 'good' },
     ],
-    next: { title: 'Approve your first change', minutes: 2 },
-  }
-  const later = {
-    ...first,
-    results: [
-      {
-        label: 'Calls from Google',
-        value: '14',
-        change: '3 more than last month',
-        tone: 'good',
-        start: '9',
-        source: 'your Monday answers',
-      },
-    ],
-    checkIn: '2026-11-16',
+    next: { title: 'Approve your opening hours', minutes: 2 },
   }
   let sent: object = first
   mock.store(on)
   mock.clock(on)
   on('ui.open', () => ({ value: { isPlaced: true } }))
-  // The owner's site runs on a platform this Claude is already connected to.
-  on('tool.list', () => ({ value: [tool(START), tool('mcp__Wordpress__wpcom-site-reset-get')] }))
+  on('tool.list', () => ({ value: [tool(START)] }))
   on('tool.call', () => ({ result: { structuredContent: { panel: sent } } }))
 
   await $.tool.call({ tool: START })
@@ -212,51 +228,35 @@ test('the first check holds the top until results replace it', async ($, on) => 
   for (const surface of SURFACES) {
     const ui = await $.ui.mount({ ...pane(), surface })
 
-    expect(await ui.find({ type: 'Text', text: /Not on the first page/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Needs work/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Nothing was connected/ })).toBeDefined()
-    expect(await ui.find({ key: 'checkin' })).toBeDefined()
-    expect(await ui.find({ key: 'setup:site' })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /^3 of 4$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^need work$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Google search, Google Maps, AI assistants\.$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Approve your opening hours$/ })).toBeDefined()
     await ui.unmount()
   }
 
-  sent = later
+  sent = { ...first, result: PANEL.result }
   await $.tool.call({ tool: START })
 
   const ui = await $.ui.mount({ ...pane(), surface: 'desktop' })
 
-  expect(await ui.find({ type: 'Text', text: /Not on the first page/ })).toBeUndefined()
-  expect(await ui.find({ type: 'Text', text: /9 when you started\. From your Monday answers/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Next check-in Nov 16/ })).toBeDefined()
-  expect(await ui.find({ key: 'checkin' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^3 of 4$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /^14$/ })).toBeDefined()
   await ui.unmount()
 })
 
-test('only this plugin\'s own Higgsfield entry is ever held back', () => {
-  const ours = { server: 'plugin:visibility-coach:higgsfield', provider: { plugin: PLUGIN } }
-
-  expect(isOwnHiggsfield(ours, PLUGIN)).toBe(true)
-  // A Higgsfield the owner added themselves, under any name.
-  expect(isOwnHiggsfield({ ...ours, provider: { plugin: 'other' } }, PLUGIN)).toBe(false)
-  expect(isOwnHiggsfield({ ...ours, server: 'claude.ai Higgsfield' }, PLUGIN)).toBe(false)
-  // The coach's own server.
-  expect(
-    isOwnHiggsfield({ ...ours, server: 'plugin:visibility-coach:visibility-coach' }, PLUGIN),
-  ).toBe(false)
-})
-
-test('with nothing read yet the panel says how to begin and can show an example', async ($, on) => {
+test('with nothing read yet the card says how to begin and can show an example', async ($, on) => {
   mock.store(on)
 
   for (const surface of SURFACES) {
     const ui = await $.ui.mount({ ...pane(), surface })
 
-    expect(await ui.find({ type: 'Text', text: /Get found by the right customers/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^See how customers find you$/ })).toBeDefined()
     await ui.press({ key: 'example' })
     expect(await ui.find({ type: 'Text', text: /Example\. Not your business\./ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /Harbour Plumbing/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Harbour Plumbing$/ })).toBeDefined()
     await ui.press({ key: 'example' })
-    expect(await ui.find({ type: 'Text', text: /Harbour Plumbing/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /^Harbour Plumbing$/ })).toBeUndefined()
     await ui.unmount()
   }
 })
@@ -269,6 +269,6 @@ test('a value an earlier version stored is declined', async ($, on) => {
 
   const ui = await $.ui.mount({ ...pane(), surface: 'desktop' })
 
-  expect(await ui.find({ type: 'Text', text: /Get found by the right customers/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^See how customers find you$/ })).toBeDefined()
   await ui.unmount()
 })

@@ -11,7 +11,7 @@ This skill is a router. The method lives on the Visibility Coach server, not her
 
 1. Call the `start_here` tool from the `visibility-coach` connector first, before anything else.
 2. If the tool is missing or not signed in, tell the owner how to connect:
-   - Claude Code: type `/coach` to open the panel and press Set up beside Visibility Coach, or run `/mcp`, pick `visibility-coach`, and sign in with the email link.
+   - Claude Code: type `/coach` to open the panel and press Sign In, or run `/mcp`, pick `visibility-coach`, and sign in with the email link.
    - claude.ai or Cowork: add a custom connector with the URL `https://visibility-coach.vercel.app/mcp`, then sign in with the email link.
    Stop there until it is connected.
 3. If `start_here` says the account is not paid, relay its message and buy link word for word. Do not continue with paid work.
@@ -63,20 +63,6 @@ When you report a number, say where it came from ("from your Monday answers") an
 Once the first change is approved, offer a weekly check-in. If this Claude can schedule a task, set it up with the owner's yes. If it cannot, say so, and offer the words for a calendar reminder instead.
 
 If the playbook says otherwise about any of this, the playbook wins.
-
-## Optional extras
-
-Two other services can help with a step. Neither is needed for coaching. Offer one only when the step in hand calls for it, and carry on without it if the owner says no.
-
-| When the step needs | Service | If its tools are missing |
-|---|---|---|
-| a photo or short video (Business Profile, a page, a post) | Higgsfield | Claude Code: `/coach`, then Turn on beside Higgsfield. claude.ai or Cowork: add a custom connector with the URL `https://mcp.higgsfield.ai/mcp`. |
-| a new section or layout for a page | 21st.dev Magic | Get a key at `https://21st.dev/mcp`. Claude Code: `/plugin marketplace add 21st-dev/magic-mcp`, then `/plugin install 21st`. |
-
-- Each is a separate company with its own account and its own cost. Say so before the owner sets one up.
-- Before anything that spends the owner's credits there, say what it will make and what it costs if the tool reports a price, and get a yes.
-- Give these services only the brief for the one asset in hand. Never send them the owner's saved profile, their work history, or playbook text.
-- What they make is a draft like any other: it goes live only with the owner's yes.
 
 ## Rules
 

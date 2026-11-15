@@ -1,11 +1,13 @@
-// The Visibility Coach panel: one small pane beside the chat.
+// The Visibility Coach panel: one small card beside the chat.
+//
+// One number, one next step, one line for what is waiting. Everything else
+// is asked for in the chat.
 //
 // It only displays. It holds no method, no scoring and no playbook text: it
 // mirrors the `panel` object the Visibility Coach server sends (the contract
-// is ../types/index.d.ts) and shows how each connection stands. It reads no
-// files, runs no processes and makes no network requests of its own; the one
-// server call it makes is `start_here`, on the owner's own press or command,
-// over the session's existing connection.
+// is ../types/index.d.ts). It reads no files, runs no processes and makes no
+// network requests of its own; the one server call it makes is `start_here`,
+// on the owner's own command, over the session's existing connection.
 import { atom, read, update } from 'claude-code'
 import type {
   ElementTable,
@@ -14,105 +16,52 @@ import type {
   RenderElement,
 } from 'claude-code'
 
-import type {
-  CoachCheck,
-  CoachLink,
-  CoachLinks,
-  CoachPanel,
-  CoachResult,
-  CoachRow,
-  CoachSetup,
-} from '../types'
+import type { CoachCheck, CoachLink, CoachPanel, CoachResult } from '../types'
 
 type UI = Pick<ElementTable, 'Box' | 'Text' | 'Button' | 'Link'>
 
 const PANE = 'coach'
 const TITLE = 'Visibility Coach'
-// Keys of this plugin's .mcp.json.
+// The server's key in this plugin's .mcp.json.
 const COACH = 'visibility-coach'
-const HIGGSFIELD = 'higgsfield'
 
-// The one accent, and the three meanings a color may carry. Words always
-// carry the meaning too.
-const TINT = 'suggestion'
+// The three meanings a color may carry. Words always carry the meaning too.
 const GOOD = 'success'
 const WARN = 'warning'
 const BAD = 'error'
 
-const NO_LINKS: CoachLinks = {
-  coach: 'unknown',
-  site: 'unknown',
-  google: 'unknown',
-  higgsfield: 'unknown',
-  magic: 'unknown',
-}
-
 // Change a tag when the value's fields change: it declines what an earlier
 // version stored, which outlives a reload.
 const panel = atom({ plugin: 'visibility-coach', key: 'panel' } as const, null, {
-  shape: 'panel-2',
+  shape: 'panel-3',
 })
-const links = atom(
-  { plugin: 'visibility-coach', key: 'links' } as const,
-  NO_LINKS,
-  { shape: 'links-2' },
+const coach = atom(
+  { plugin: 'visibility-coach', key: 'coach' } as const,
+  'unknown',
+  { shape: 'coach-1' },
 )
-const now = atom({ plugin: 'visibility-coach', key: 'now' } as const, null)
-const setup = atom({ plugin: 'visibility-coach', key: 'setup' } as const, null)
 const isExample = atom(
   { plugin: 'visibility-coach', key: 'isExample' } as const,
   false,
 )
-
-// What the coach is doing, in the owner's words, by the playbook topic asked
-// for. Labels only: the same topic names the skill's own table lists.
-const DOING: Record<string, string> = {
-  align: 'Getting to know your business',
-  'mini-grill': 'A few quick questions before a change',
-  'site-review': 'Reviewing your website',
-  'seo-fixes': 'Improving how you show up on Google',
-  'aeo-answers': 'Answering the questions customers ask',
-  'geo-ai-visibility': 'Helping AI assistants recommend you',
-  'local-maps': 'Google Maps and reviews',
-  'structured-data': 'Helping Google read your pages',
-  'llms-txt-and-crawlers': 'Letting AI assistants read your site',
-  'apply-changes': 'Publishing what you approved',
-  'progress-report': 'Checking what changed',
-}
+const isSigningIn = atom(
+  { plugin: 'visibility-coach', key: 'isSigningIn' } as const,
+  false,
+)
 
 // Shown only on the owner's press, under a banner that says it is one.
 const EXAMPLE: CoachPanel = {
   business: 'Harbour Plumbing',
-  website: 'harbourplumbing.example',
-  plan: { state: 'active', until: '2027-03-01' },
+  result: {
+    value: '14',
+    label: 'calls from Google this month',
+    change: '3 more than last month',
+    tone: 'good',
+    start: '9',
+  },
   next: { title: 'Add the suburbs you serve to your home page', minutes: 10 },
-  waiting: [
-    { title: 'New home page title', note: 'Home page' },
-    { title: 'Answer: "Do you do emergency call-outs?"', note: 'Services' },
-  ],
-  results: [
-    {
-      label: 'Calls from Google',
-      value: '14',
-      change: '3 more than last month',
-      tone: 'good',
-      start: '9',
-      source: 'your Monday answers',
-    },
-    {
-      label: 'AI assistants naming you',
-      value: '2 of 5 checks',
-      change: 'Same as last month',
-      tone: 'neutral',
-      start: '0 of 5',
-      source: 'our weekly check',
-    },
-  ],
+  waiting: 2,
   checkIn: '2026-11-16',
-  done: [
-    { title: 'Fixed opening hours on Google', note: 'Nov 12' },
-    { title: 'Added a services list', note: 'Nov 9' },
-  ],
 }
 
 // ---------------------------------------------------------------------------
@@ -134,49 +83,36 @@ const text = (value: unknown, max: number): string | undefined => {
   return line === '' ? undefined : line.slice(0, max)
 }
 
-const list = (value: unknown): unknown[] =>
-  Array.isArray(value) ? value.slice(0, 3) : []
-
-const toRows = (value: unknown): CoachRow[] =>
-  list(value).flatMap(one => {
-    const title = text(field(one, 'title'), 80)
-
-    return title === undefined
-      ? []
-      : [{ title, note: text(field(one, 'note'), 40) }]
-  })
-
-const toResults = (value: unknown): CoachResult[] =>
-  list(value).flatMap(one => {
-    const label = text(field(one, 'label'), 40)
-    const figure = text(field(one, 'value'), 24)
-    const tone = (['good', 'bad', 'neutral'] as const).find(
-      known => known === field(one, 'tone'),
-    )
-
-    return label === undefined || figure === undefined
-      ? []
-      : [
-          {
-            label,
-            value: figure,
-            change: text(field(one, 'change'), 60),
-            tone,
-            start: text(field(one, 'start'), 24),
-            source: text(field(one, 'source'), 40),
-          },
-        ]
-  })
+const count = (value: unknown, max: number): number | undefined =>
+  typeof value === 'number' && value >= 1 && value <= max
+    ? Math.round(value)
+    : undefined
 
 const toChecks = (value: unknown): CoachCheck[] =>
   (Array.isArray(value) ? value.slice(0, 5) : []).flatMap(one => {
     const label = text(field(one, 'label'), 30)
-    const finding = text(field(one, 'finding'), 100)
 
-    return label === undefined || finding === undefined
+    return label === undefined
       ? []
-      : [{ label, finding, state: field(one, 'state') === 'good' ? 'good' : 'fix' }]
+      : [{ label, state: field(one, 'state') === 'good' ? 'good' : 'fix' }]
   })
+
+const toResult = (raw: unknown): CoachResult | undefined => {
+  const value = text(field(raw, 'value'), 12)
+  const label = text(field(raw, 'label'), 50)
+
+  return value === undefined || label === undefined
+    ? undefined
+    : {
+        value,
+        label,
+        change: text(field(raw, 'change'), 60),
+        tone: (['good', 'bad', 'neutral'] as const).find(
+          known => known === field(raw, 'tone'),
+        ),
+        start: text(field(raw, 'start'), 12),
+      }
+}
 
 const toPanel = (raw: unknown, readAt: string): CoachPanel | undefined => {
   if (typeof raw !== 'object' || raw === null) {
@@ -188,34 +124,21 @@ const toPanel = (raw: unknown, readAt: string): CoachPanel | undefined => {
     known => known === field(plan, 'state'),
   )
   const buyUrl = text(field(plan, 'buyUrl'), 300)
-  const next = text(field(field(raw, 'next'), 'title'), 120)
-  const minutes = field(field(raw, 'next'), 'minutes')
+  const next = text(field(field(raw, 'next'), 'title'), 80)
 
   return {
     business: text(field(raw, 'business'), 60),
-    website: text(field(raw, 'website'), 60),
     plan:
       state === undefined
         ? undefined
-        : {
-            state,
-            until: text(field(plan, 'until'), 30),
-            buyUrl: buyUrl?.startsWith('https://') ? buyUrl : undefined,
-          },
+        : { state, buyUrl: buyUrl?.startsWith('https://') ? buyUrl : undefined },
+    standing: toChecks(field(raw, 'standing')),
+    result: toResult(field(raw, 'result')),
     next:
       next === undefined
         ? undefined
-        : {
-            title: next,
-            minutes:
-              typeof minutes === 'number' && minutes >= 1 && minutes <= 240
-                ? Math.round(minutes)
-                : undefined,
-          },
-    standing: toChecks(field(raw, 'standing')),
-    waiting: toRows(field(raw, 'waiting')),
-    results: toResults(field(raw, 'results')),
-    done: toRows(field(raw, 'done')),
+        : { title: next, minutes: count(field(field(raw, 'next'), 'minutes'), 240) },
+    waiting: count(field(raw, 'waiting'), 99),
     checkIn: text(field(raw, 'checkIn'), 30),
     asOf: text(field(raw, 'asOf'), 40) ?? readAt,
   }
@@ -259,10 +182,7 @@ const findPanel = (result: unknown, modelText?: string): unknown => {
 }
 
 // ---------------------------------------------------------------------------
-// Connections.
-
-const serverOf = (tool: string): string =>
-  /^mcp__(.+?)__/.exec(tool)?.[1] ?? ''
+// The connection to the coach.
 
 /** The tool's own name when it belongs to the coach's server, whatever name
  * that server runs under (this plugin's, or a connector the owner added). */
@@ -272,71 +192,40 @@ const coachTool = (tool: string): string | undefined => {
   return /visibility[-_ ]?coach/i.test(server) ? name : undefined
 }
 
-/** Whether a server about to join the session is the Higgsfield entry this
- * plugin lists: the one server it holds back until the owner turns it on.
- * Never the coach's own, and never a Higgsfield the owner added themselves. */
-export const isOwnHiggsfield = (
-  e: { server: string; provider: { plugin: string } },
-  plugin: string,
-): boolean => e.provider.plugin === plugin && /(^|:)higgsfield$/.test(e.server)
+const sense = async ($: EngineInterface): Promise<CoachLink> => {
+  const tools = await $.tool.list()
 
-const standing = (reason: string): CoachLink => {
-  if (reason === 'auth') {
+  if (tools.some(tool => tool.mcp && coachTool(tool.name) !== undefined)) {
+    return 'on'
+  }
+
+  const asked = await $.mcp.connect(COACH)
+
+  if (asked.isConnected) {
+    return 'on'
+  }
+
+  if (asked.reason === 'auth') {
     return 'sign-in'
   }
 
-  if (reason === 'disabled') {
+  if (asked.reason === 'disabled') {
     return 'off'
   }
 
-  return reason === 'unlisted' ? 'missing' : 'error'
+  return asked.reason === 'unlisted' ? 'missing' : 'error'
 }
 
-const sense = async ($: EngineInterface): Promise<CoachLinks> => {
-  const tools = await $.tool.list()
-  const servers = tools.filter(tool => tool.mcp).map(tool => serverOf(tool.name))
-  const runs = (pattern: RegExp): boolean =>
-    servers.some(server => pattern.test(server))
-
-  let coach: CoachLink = 'on'
-
-  if (!runs(/visibility[-_ ]?coach/i)) {
-    const asked = await $.mcp.connect(COACH)
-    coach = asked.isConnected ? 'on' : standing(asked.reason)
-  }
-
-  // Accounts and extras count as connected however the owner added them: a
-  // website platform, and anything that reports Google's own numbers.
-  let higgsfield: CoachLink = runs(/higgs/i) ? 'on' : 'off'
-
-  if (higgsfield === 'off' && (await $.store.get(HIGGSFIELD)) === true) {
-    const asked = await $.mcp.connect(HIGGSFIELD)
-    higgsfield = asked.isConnected ? 'on' : standing(asked.reason)
-  }
-
-  return {
-    coach,
-    site: runs(/wordpress|shopify|wix|webflow|squarespace/i) ? 'on' : 'missing',
-    google: runs(
-      /search[-_ ]?console|business[-_ ]?profile|analytics|windsor|supermetrics|local[-_ ]?falcon/i,
-    )
-      ? 'on'
-      : 'missing',
-    higgsfield,
-    magic: runs(/21st|^magic$|magic[-_ ]?mcp/i) ? 'on' : 'missing',
-  }
-}
-
-const look = async ($: EngineInterface): Promise<CoachLinks> => {
-  let found = NO_LINKS
+const look = async ($: EngineInterface): Promise<CoachLink> => {
+  let found: CoachLink = 'unknown'
 
   try {
     found = await sense($)
   } catch {
-    // Leave every row "unknown": the panel says so and offers Refresh.
+    // Left "unknown": the panel then asks for nothing it cannot be sure of.
   }
 
-  await update($, links, () => found)
+  await update($, coach, () => found)
 
   return found
 }
@@ -344,28 +233,27 @@ const look = async ($: EngineInterface): Promise<CoachLinks> => {
 const keep = async ($: EngineInterface, fresh: CoachPanel): Promise<void> => {
   await update($, panel, () => fresh)
   await update($, isExample, () => false)
+  await update($, isSigningIn, () => false)
   await $.store.set('panel', fresh)
 }
 
 const stamp = async ($: EngineInterface): Promise<string> =>
   new Date(await $.clock.now()).toISOString()
 
-/** The owner's own ask: look at the connections, then read the latest. */
+/** The owner's own ask: look at the connection, then read the latest. */
 const refresh = async ($: EngineInterface): Promise<void> => {
-  const found = await look($)
-
-  if (found.coach !== 'on') {
+  if ((await look($)) !== 'on') {
     return
   }
 
   try {
-    const coach = await $.mcp.connect(COACH)
+    const server = await $.mcp.connect(COACH)
 
-    if (!coach.isConnected) {
+    if (!server.isConnected) {
       return
     }
 
-    const answer = await $.mcp.call(coach.server, 'start_here')
+    const answer = await $.mcp.call(server.server, 'start_here')
     const fresh = answer.isError
       ? undefined
       : toPanel(findPanel(answer), await stamp($))
@@ -374,10 +262,12 @@ const refresh = async ($: EngineInterface): Promise<void> => {
       await keep($, fresh)
     }
   } catch {
-    // The panel keeps what it had and still shows when that was read.
+    // The panel keeps what it had.
   }
 }
 
+/** Puts words in the message box for the owner to send: the panel never
+ * sends anything on its own. */
 const fill = async ($: EngineInterface, words: string): Promise<void> => {
   const { isFilled } = await $.prompt.fill({ text: words })
 
@@ -402,132 +292,18 @@ const MONTHS = [
   'Dec',
 ]
 
-const day = (iso: string | undefined, thisYear?: string): string | undefined => {
-  const [, year, month, date] = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '') ?? []
+const day = (iso: string | undefined): string | undefined => {
+  const [, , month, date] = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '') ?? []
   const name = MONTHS[Number(month) - 1]
 
-  if (name === undefined) {
-    return undefined
-  }
-
-  const short = `${name} ${Number(date)}`
-
-  return thisYear === undefined || year === thisYear
-    ? short
-    : `${short}, ${year}`
+  return name === undefined ? undefined : `${name} ${Number(date)}`
 }
 
-const planLine = (shown: CoachPanel): { words: string; color?: string } => {
-  const until = day(shown.plan?.until, shown.asOf?.slice(0, 4))
-
-  switch (shown.plan?.state) {
-    case 'active':
-      return { words: until === undefined ? 'Plan active' : `Plan active to ${until}` }
-    case 'grace':
-      return { words: 'Plan ended. Renew to keep going.', color: WARN }
-    case 'ended':
-    case 'none':
-      return { words: 'No active plan', color: WARN }
-    default:
-      return { words: '' }
-  }
-}
-
-const LINK_NAMES: Record<keyof CoachLinks, { name: string; adds: string }> = {
-  coach: { name: 'Visibility Coach', adds: 'your coach' },
-  site: { name: 'Your website', adds: 'publishes what you approve' },
-  google: { name: 'Google numbers', adds: 'calls and searches' },
-  higgsfield: { name: 'Higgsfield', adds: 'photos and video' },
-  magic: { name: '21st.dev Magic', adds: 'page sections' },
-}
-
-const LINK_WORDS: Record<CoachLink, string> = {
-  on: 'Connected',
-  'sign-in': 'Needs sign-in',
-  off: 'Off',
-  missing: 'Not set up',
-  error: 'Could not connect',
-  unknown: 'Not checked',
-}
-
-// Accounts are set up in the chat: the press only puts a plain request in
-// the message box, and the coach finds what this Claude can connect.
-const ASK_FOR: Partial<Record<keyof CoachLinks, string>> = {
-  site: 'Help me connect my website.',
-  google: 'Help me get my Google numbers in.',
-}
-
-const steps = (which: keyof CoachLinks, how: CoachLink): string[] => {
-  if (which === 'site' || which === 'google') {
-    return [
-      'Send the message in the box and the coach will find what you can connect.',
-      'Not needed to start: one question a week or a screenshot works too.',
-    ]
-  }
-
-  if (which === 'magic') {
-    return [
-      '1. Get a free key at 21st.dev/mcp.',
-      '2. Run: /plugin marketplace add 21st-dev/magic-mcp',
-      '3. Run: /plugin install 21st, then paste the key.',
-    ]
-  }
-
-  const server = which === 'coach' ? COACH : HIGGSFIELD
-
-  if (how === 'sign-in') {
-    return [
-      '1. Send /mcp (it is in the message box now).',
-      `2. Choose ${server}.`,
-      which === 'coach'
-        ? '3. Sign in with the link we email you.'
-        : '3. Sign in to Higgsfield. It needs a paid Higgsfield plan.',
-    ]
-  }
-
-  return how === 'error'
-    ? ['It did not connect. Check your internet, then press Refresh.']
-    : [`Send /mcp, choose ${server}, and turn it on.`]
-}
-
-// ---------------------------------------------------------------------------
-// Drawing. One column of grouped rows: a title, then each group under a
-// small title-case label, most important first. One tinted button on the
-// whole panel (the next step); every state is a symbol, a word and a color.
-
-const group = (
-  { Box, Text }: UI,
-  label: string,
-  body: RenderElement | RenderElement[],
-): RenderElement => (
-  <Box flexDirection="column">
-    <Text size="caption" weight="semibold" dimColor>
-      {label}
-    </Text>
-    <Box flexDirection="column" borderStyle="round" borderDimColor paddingX={1}>
-      {body}
-    </Box>
-  </Box>
-)
-
-const rowsOf = (
-  { Box, Text }: UI,
-  rows: CoachRow[],
-  mark: string,
-): RenderElement[] =>
-  rows.map(row => (
-    <Box justifyContent="space-between" columnGap={1}>
-      <Text wrap="truncate-end">
-        {mark}
-        {row.title}
-      </Text>
-      {row.note !== undefined && (
-        <Text dimColor size="footnote">
-          {row.note}
-        </Text>
-      )}
-    </Box>
-  ))
+const SIGN_IN_STEPS = [
+  '1. Send /mcp (it is in the message box now).',
+  '2. Choose visibility-coach.',
+  '3. Sign in with the link we email you.',
+]
 
 const toneColor = (tone: CoachResult['tone']): string | undefined => {
   if (tone === 'good') {
@@ -537,77 +313,75 @@ const toneColor = (tone: CoachResult['tone']): string | undefined => {
   return tone === 'bad' ? BAD : undefined
 }
 
-const linkRow = (
-  ui: UI,
-  $: EngineInterface,
-  which: keyof CoachLinks,
+// ---------------------------------------------------------------------------
+// Drawing. One card, top to bottom: whose it is, the one number, the one
+// next step with the one tinted button, one line for what is waiting.
+
+/** The headline: the result when there is one, else the first check, else
+ * how to begin. */
+const headline = (
+  { Box, Text }: UI,
+  shown: CoachPanel | null,
   how: CoachLink,
-  open: CoachSetup,
 ): RenderElement => {
-  const { Box, Text, Button, Link } = ui
-  const { name, adds } = LINK_NAMES[which]
-  const isOn = how === 'on'
-  const ask = which === 'higgsfield' && how === 'off' ? 'Turn On' : 'Set Up'
+  const result = shown?.result
+  const standing = shown?.standing ?? []
 
-  const press = async (): Promise<void> => {
-    await update($, setup, () => which)
+  if (result !== undefined) {
+    const under = [
+      result.change,
+      result.start === undefined ? undefined : `Started at ${result.start}`,
+    ].filter(part => part !== undefined)
 
-    if (which === 'higgsfield') {
-      // The owner's yes: from here the server may join the session.
-      await $.store.set(HIGGSFIELD, true)
-    }
+    return (
+      <Box flexDirection="column">
+        <Text size="title" weight="bold" tabular>
+          {result.value}
+        </Text>
+        <Text>{result.label}</Text>
+        {under.length > 0 && (
+          <Text
+            size="footnote"
+            color={toneColor(result.tone)}
+            dimColor={toneColor(result.tone) === undefined}
+          >
+            {under.join('. ')}.
+          </Text>
+        )}
+      </Box>
+    )
+  }
 
-    const request = ASK_FOR[which]
+  if (standing.length > 0) {
+    const toFix = standing.filter(check => check.state === 'fix')
 
-    if (request !== undefined) {
-      await fill($, request)
-
-      return
-    }
-
-    const found = which === 'magic' ? how : (await look($))[which]
-
-    if (found === 'on') {
-      await update($, setup, () => null)
-    } else if (found === 'sign-in' || found === 'off') {
-      await fill($, '/mcp')
-    }
+    return (
+      <Box flexDirection="column">
+        <Text size="title" weight="bold" tabular>
+          {toFix.length} of {standing.length}
+        </Text>
+        <Text>{toFix.length === 1 ? 'needs work' : 'need work'}</Text>
+        <Text dimColor size="footnote">
+          {toFix.length === 0
+            ? 'Everything we checked looks good.'
+            : `${toFix.map(check => check.label).join(', ')}.`}
+        </Text>
+      </Box>
+    )
   }
 
   return (
     <Box flexDirection="column">
-      <Box justifyContent="space-between" columnGap={1}>
-        <Text wrap="truncate-end">
-          <Text color={isOn ? GOOD : undefined} dimColor={!isOn}>
-            {isOn ? '✓ ' : '○ '}
-          </Text>
-          {name}
-          <Text dimColor size="footnote">
-            {' '}
-            {adds}
-          </Text>
-        </Text>
-        {isOn || how === 'unknown' ? (
-          <Text dimColor size="footnote">
-            {LINK_WORDS[how]}
-          </Text>
-        ) : (
-          <Button key={`setup:${which}`} label={ask} onPress={press} />
-        )}
-      </Box>
-      {open === which && !isOn && (
-        <Box flexDirection="column" paddingLeft={2}>
-          <Text dimColor size="footnote">
-            {LINK_WORDS[how]}
-          </Text>
-          {steps(which, how).map(step => (
-            <Text size="footnote">{step}</Text>
-          ))}
-          {which === 'magic' && (
-            <Link href="https://21st.dev/mcp" label="Open 21st.dev/mcp" />
-          )}
-        </Box>
-      )}
+      <Text size="heading" weight="semibold">
+        {how === 'on' || how === 'unknown'
+          ? 'See how customers find you'
+          : 'Sign in to begin'}
+      </Text>
+      <Text dimColor size="footnote">
+        {how === 'on' || how === 'unknown'
+          ? 'It takes your website address and about two minutes.'
+          : 'One email link. No password.'}
+      </Text>
     </Box>
   )
 }
@@ -616,42 +390,20 @@ const full = (
   ui: UI,
   $: EngineInterface,
   shown: CoachPanel | null,
-  how: CoachLinks,
-  doing: string | null,
-  open: CoachSetup,
+  how: CoachLink,
   isSample: boolean,
+  isStepping: boolean,
 ): RenderElement => {
   const { Box, Text, Button, Link } = ui
-  const plan = shown === null ? { words: '' } : planLine(shown)
-  const under = [shown?.website, plan.words].filter(
-    part => part !== undefined && part !== '',
-  )
-  const waiting = shown?.waiting ?? []
-  const results = shown?.results ?? []
-  const done = shown?.done ?? []
-  // The first check holds the top of the panel until real results replace it.
-  const standing = results.length === 0 ? (shown?.standing ?? []) : []
-  const nextCheckIn = day(shown?.checkIn, shown?.asOf?.slice(0, 4))
-  const isReady = how.coach === 'on'
+  const hasStarted =
+    shown?.result !== undefined || (shown?.standing?.length ?? 0) > 0
+  const needsSignIn = !isSample && how !== 'on' && how !== 'unknown'
+  const waiting = shown?.waiting ?? 0
+  const checkIn = day(shown?.checkIn)
+  const hasLapsed = shown?.plan !== undefined && shown.plan.state !== 'active'
 
   return (
     <Box flexDirection="column" rowGap={1} paddingX={1}>
-      <Box flexDirection="column">
-        <Text size="title" weight="bold">
-          {shown?.business ?? TITLE}
-        </Text>
-        {under.length > 0 && (
-          <Text size="footnote" color={plan.color} dimColor={plan.color === undefined}>
-            {under.join(' · ')}
-          </Text>
-        )}
-        {doing !== null && !isSample && (
-          <Text size="footnote" color={TINT}>
-            Now: {doing}
-          </Text>
-        )}
-      </Box>
-
       {isSample && (
         <Box justifyContent="space-between" columnGap={1}>
           <Text color={WARN}>Example. Not your business.</Text>
@@ -663,201 +415,124 @@ const full = (
         </Box>
       )}
 
-      {shown === null &&
-        group(
-          ui,
-          'Start',
+      <Box flexDirection="column">
+        <Text dimColor size="footnote">
+          {shown?.business ?? TITLE}
+        </Text>
+        {headline(ui, shown, how)}
+      </Box>
+
+      {shown?.next !== undefined && (
+        <Box justifyContent="space-between" columnGap={1}>
           <Box flexDirection="column">
-            <Text>
-              {isReady
-                ? 'Say "help me show up on Google" to begin.'
-                : 'Get found by the right customers on Google and AI search.'}
-            </Text>
-            <Box columnGap={1}>
-              {isReady && (
+            <Text weight="medium">{shown.next.title}</Text>
+            {shown.next.minutes !== undefined && (
+              <Text dimColor size="footnote">
+                {shown.next.minutes} minutes
+              </Text>
+            )}
+          </Box>
+          <Button
+            key="start"
+            label="Start"
+            variant="primary"
+            onPress={() => fill($, "Let's do my next step.")}
+          />
+        </Box>
+      )}
+
+      {waiting > 0 && (
+        <Button
+          key="review"
+          plain
+          onPress={() => fill($, "Show me what's waiting for my OK.")}
+        >
+          {String(waiting)} waiting for your OK ›
+        </Button>
+      )}
+
+      {!hasStarted && !isSample && (
+        <Box flexDirection="column">
+          <Box columnGap={1}>
+            {needsSignIn ? (
+              <Button
+                key="sign-in"
+                label="Sign In"
+                variant="primary"
+                onPress={async () => {
+                  await update($, isSigningIn, () => true)
+                  await fill($, '/mcp')
+                }}
+              />
+            ) : (
+              shown?.next === undefined && (
                 <Button
                   key="start"
                   label="Start"
                   variant="primary"
                   onPress={() => fill($, 'Help me show up on Google.')}
                 />
-              )}
-              <Button
-                key="example"
-                label="See an Example"
-                onPress={() => update($, isExample, () => true)}
-              />
-            </Box>
-          </Box>,
-        )}
-
-      {standing.length > 0 &&
-        group(
-          ui,
-          'Where You Stand',
-          <Box flexDirection="column">
-            {standing.map(check => (
-              <Box flexDirection="column">
-                <Box justifyContent="space-between" columnGap={1}>
-                  <Text weight="medium" wrap="truncate-end">
-                    {check.label}
-                  </Text>
-                  <Text
-                    size="footnote"
-                    color={check.state === 'good' ? GOOD : WARN}
-                  >
-                    {check.state === 'good' ? '✓ Good' : '! Needs work'}
-                  </Text>
-                </Box>
-                <Text dimColor size="footnote">
-                  {check.finding}
-                </Text>
-              </Box>
-            ))}
-            <Text dimColor size="caption">
-              From what anyone can see online. Nothing was connected.
-            </Text>
-          </Box>,
-        )}
-
-      {shown?.next !== undefined &&
-        group(
-          ui,
-          'Next Step',
-          <Box flexDirection="column">
-            <Text weight="medium">{shown.next.title}</Text>
-            <Box justifyContent="space-between" columnGap={1}>
-              <Text dimColor size="footnote">
-                {shown.next.minutes === undefined
-                  ? 'One thing at a time'
-                  : `About ${shown.next.minutes} minutes`}
-              </Text>
-              <Button
-                key="start"
-                label="Start"
-                variant="primary"
-                onPress={() => fill($, "Let's do my next step.")}
-              />
-            </Box>
-          </Box>,
-        )}
-
-      {waiting.length > 0 &&
-        group(
-          ui,
-          'Waiting for Your OK',
-          <Box flexDirection="column">
-            {rowsOf(ui, waiting, '')}
-            <Box justifyContent="space-between" columnGap={1}>
-              <Text dimColor size="footnote">
-                Nothing goes live without your yes.
-              </Text>
-              <Button
-                key="review"
-                label="Review"
-                onPress={() => fill($, "Show me what's waiting for my OK.")}
-              />
-            </Box>
-          </Box>,
-        )}
-
-      {results.length > 0 &&
-        group(
-          ui,
-          'Results',
-          results.map(result => (
-            <Box flexDirection="column">
-              <Box justifyContent="space-between" columnGap={1}>
-                <Text wrap="truncate-end">{result.label}</Text>
-                <Text weight="semibold" tabular>
-                  {result.value}
-                </Text>
-              </Box>
-              {result.change !== undefined && (
-                <Text
-                  size="footnote"
-                  color={toneColor(result.tone)}
-                  dimColor={toneColor(result.tone) === undefined}
-                >
-                  {result.change}
-                </Text>
-              )}
-              {(result.start !== undefined || result.source !== undefined) && (
-                <Text size="caption" dimColor>
-                  {[
-                    result.start === undefined ? undefined : `${result.start} when you started`,
-                    result.source === undefined ? undefined : `From ${result.source}`,
-                  ]
-                    .filter(part => part !== undefined)
-                    .join('. ')}
-                </Text>
-              )}
-            </Box>
-          )),
-        )}
-
-      {done.length > 0 && group(ui, 'Done', rowsOf(ui, done, '✓ '))}
-
-      {!isSample &&
-        group(
-          ui,
-          'Connections',
-          (['coach', 'site', 'google', 'higgsfield', 'magic'] as const).map(which =>
-            linkRow(ui, $, which, how[which], open),
-          ),
-        )}
-
-      {!isSample && shown !== null && nextCheckIn === undefined && isReady && (
-        <Box justifyContent="space-between" columnGap={1}>
-          <Text dimColor size="footnote">
-            No weekly check-in yet.
-          </Text>
-          <Button
-            key="checkin"
-            label="Check In Weekly"
-            onPress={() => fill($, 'Check in with me every Monday.')}
-          />
+              )
+            )}
+            <Button
+              key="example"
+              label="See an Example"
+              onPress={() => update($, isExample, () => true)}
+            />
+          </Box>
+          {needsSignIn &&
+            isStepping &&
+            SIGN_IN_STEPS.map(step => <Text size="footnote">{step}</Text>)}
         </Box>
       )}
 
-      {!isSample && (
-        <Box justifyContent="space-between" columnGap={1}>
-          {shown?.plan?.buyUrl !== undefined && shown.plan.state !== 'active' ? (
-            <Link href={shown.plan.buyUrl} label="See plans" />
-          ) : (
-            <Text dimColor size="caption">
-              {day(shown?.asOf) === undefined
-                ? 'Only you see this.'
-                : `Updated ${day(shown?.asOf)}${nextCheckIn === undefined ? '' : `. Next check-in ${nextCheckIn}`}`}
-            </Text>
+      {hasLapsed && (
+        <Box columnGap={1}>
+          <Text color={WARN} size="footnote">
+            Your plan has ended.
+          </Text>
+          {shown?.plan?.buyUrl !== undefined && (
+            <Link href={shown.plan.buyUrl} label="Renew" />
           )}
-          <Button key="refresh" label="Refresh" onPress={() => refresh($)} />
         </Box>
+      )}
+
+      {checkIn !== undefined && (
+        <Text dimColor size="caption">
+          Next check-in {checkIn}
+        </Text>
       )}
     </Box>
   )
 }
 
-/** The small form: the one thing to do, and what is waiting. */
+/** The small form: the number, and what is waiting. */
 const glance = (
   { Box, Text }: UI,
   shown: CoachPanel | null,
-  how: CoachLinks,
+  how: CoachLink,
 ): RenderElement => {
-  const waiting = shown?.waiting?.length ?? 0
-  const toSetUp = how.coach === 'on' || how.coach === 'unknown' ? 0 : 1
-  const notes = [
-    waiting > 0 ? `${waiting} waiting for your OK` : undefined,
-    toSetUp > 0 ? 'Sign in to start' : undefined,
-  ].filter(note => note !== undefined)
+  const waiting = shown?.waiting ?? 0
+  const result = shown?.result
+  const title =
+    result === undefined
+      ? (shown?.next?.title ?? shown?.business ?? TITLE)
+      : `${result.value} ${result.label}`
+  let note = 'Nothing needs you right now'
+
+  if (waiting > 0) {
+    note = `${waiting} waiting for your OK`
+  } else if (how !== 'on' && how !== 'unknown') {
+    note = 'Sign in to start'
+  }
 
   return (
     <Box flexDirection="column">
       <Text weight="semibold" wrap="truncate-end">
-        {shown?.next?.title ?? shown?.business ?? TITLE}
+        {title}
       </Text>
       <Text dimColor size="footnote">
-        {notes.length > 0 ? notes.join(' · ') : 'Nothing needs you right now'}
+        {note}
       </Text>
     </Box>
   )
@@ -905,7 +580,7 @@ export const register: Register = on => {
   })
 
   // The owner asked for the coach: show the panel, even when the server is
-  // not connected yet (that is when its set-up row matters most).
+  // not connected yet (that is when its Sign In button matters most).
   on('skill.prompt', async ($, e, next) => {
     if (e.pluginName === $.plugin.name) {
       await show($)
@@ -927,13 +602,6 @@ export const register: Register = on => {
     try {
       await show($)
 
-      const topic = text(field(e, 'topic'), 40)
-      const doing = topic === undefined ? undefined : DOING[topic]
-
-      if (doing !== undefined) {
-        await update($, now, () => doing)
-      }
-
       const fresh =
         ran.deny === undefined && ran.isError !== true
           ? toPanel(findPanel(ran.result, ran.text), await stamp($))
@@ -949,36 +617,14 @@ export const register: Register = on => {
     return ran
   }).catch(($, e, next) => next(e))
 
-  // Higgsfield ships listed but off: it joins a session only after the
-  // owner turns it on in the panel. A failure here lets it through, which
-  // only ever shows a sign-in row in /mcp.
-  on('mcp.connect', async ($, e, next) => {
-    const isHeld =
-      isOwnHiggsfield(e, $.plugin.name) &&
-      (await $.store.get(HIGGSFIELD)) !== true
-
-    if (!isHeld) {
-      return next(e)
-    }
-
-    return {
-      value: {
-        isConnected: false,
-        reason: 'disabled',
-        message:
-          'Higgsfield is off until you turn it on in the Visibility Coach panel.',
-      },
-    }
-  }).catch(($, e, next) => next(e))
-
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const ui = $.ui.resolve(e)
     const isSample = (await read($, isExample)) === true
     const shown = isSample ? EXAMPLE : await read($, panel)
-    const how = await read($, links)
+    const how = await read($, coach)
 
     return e.props.placement === 'widget'
       ? glance(ui, shown, how)
-      : full(ui, $, shown, how, await read($, now), await read($, setup), isSample)
+      : full(ui, $, shown, how, isSample, (await read($, isSigningIn)) === true)
   })
 }

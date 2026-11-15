@@ -28,14 +28,13 @@ https://visibility-coach.vercel.app/mcp
 
 ## Your panel
 
-In Claude Code, type `/coach`. A small panel opens beside the chat and shows, in this order:
+In Claude Code, type `/coach`. One small card opens beside the chat. It shows three things:
 
-- **Where you stand**: your first check, from your website address alone. Nothing to connect.
-- **Next step**: the one thing to do now, and about how long it takes.
-- **Waiting for your OK**: changes that are drafted. Nothing goes live without your yes.
-- **Results**: up to three numbers, each compared with last time and with where you started, and each saying where it came from.
-- **Done**: the latest changes that went live.
-- **Connections**: what is connected, and a button to set up what is not.
+- **One number**, such as your calls from Google this month, against last month and against where you started.
+- **Your next step**, and about how long it takes.
+- **What is waiting for your OK.** Nothing goes live without your yes.
+
+Before you have a result it shows your first check instead: how many of the things we looked at need work. For anything else, ask in the chat.
 
 It also opens by itself, as a small card, the first time you use the coach in a session. It never opens at start-up.
 
@@ -47,14 +46,7 @@ You do not have to connect anything. Pick whichever is easiest:
 
 - **Ask me**: answer one question at each weekly check-in.
 - **Screenshot**: send a screenshot of your Google Business Profile performance page about once a month.
-- **Connect**: connect your website platform or a reporting tool once, and it is automatic. In the panel, press Set Up beside Your website or Google numbers and the coach finds what your Claude can connect.
-
-## Optional extras
-
-Neither is needed for coaching. Each is a separate company with its own account and cost.
-
-- **Higgsfield** (photos and video). Listed with the plugin but off. In the panel, press Turn on beside Higgsfield, then sign in. On claude.ai and Cowork, add a custom connector with the URL `https://mcp.higgsfield.ai/mcp`.
-- **21st.dev Magic** (page sections). Get a key at [21st.dev/mcp](https://21st.dev/mcp), then in Claude Code run `/plugin marketplace add 21st-dev/magic-mcp` and `/plugin install 21st`.
+- **Connect**: connect your website platform or a reporting tool once, and it is automatic. Ask the coach and it finds what your Claude can connect.
 
 ## Sign in
 
@@ -74,6 +66,6 @@ Say "help me show up on Google" or "grill me" in any chat.
 
 ---
 
-Unofficial, not affiliated with Anthropic, Higgsfield or 21st.dev.
+Unofficial, not affiliated with Anthropic.
 
 The plugin in this repository is MIT licensed. The Visibility Coach service, its playbooks and its coaching method are not in this repository and are not covered by that license.
