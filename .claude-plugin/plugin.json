@@ -1,8 +1,8 @@
 {
-  "name": "visibility-coach",
-  "displayName": "Visibility Coach",
-  "version": "0.1.1",
-  "description": "Help the right customers find your business on Google and AI search. Know what to improve, approve the changes, see what happened.",
+  "name": "nearmost",
+  "displayName": "Nearmost",
+  "version": "0.9.0",
+  "description": "Your own visibility agent, inside the Claude you already use. It finds what stops customers from finding you on Google and AI search, then shows you each fix step by step or does it for you. Nothing goes live without your yes.",
   "author": {
     "name": "Sameer Chib"
   },
@@ -10,12 +10,25 @@
   "repository": "https://github.com/sameerch1b/visibility-coach-plugin",
   "license": "MIT",
   "keywords": [
+    "agent",
     "seo",
     "aeo",
     "geo",
     "local-search",
     "small-business",
-    "ai-visibility"
+    "ai-visibility",
+    "google-business-profile",
+    "reviews"
   ],
-  "privacyPolicyUrl": "https://visibility-coach.vercel.app/privacy"
+  "privacyPolicyUrl": "https://visibility-coach.vercel.app/privacy",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "clarity_api_token": {
+      "type": "string",
+      "title": "Microsoft Clarity token (optional)",
+      "description": "Only if you use Microsoft Clarity on your website. In Clarity open Settings, Data Export, Generate new API token, and paste it here. Leave empty to skip.",
+      "sensitive": true,
+      "required": false
+    }
+  }
 }
