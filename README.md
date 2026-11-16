@@ -47,6 +47,8 @@ Or [open Claude with that already typed](https://claude.ai/new?q=Help%20me%20sho
 
 Stop whenever you like. Next time, Litmark picks up where you left off.
 
+**In your first week**, connect Google Search Console: say "connect Google Search Console" and Litmark walks you through it. It is Google's free tool and it is where your results are measured. The 90-day guarantee asks for it within your first 7 days, and for your first three approved fixes to be live within 30.
+
 ## What to say
 
 You never need a command. These cover almost everything:
