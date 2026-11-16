@@ -1,8 +1,18 @@
 # Visibility Coach
 
-Help the right customers find your business on Google and AI search.
-Claude reads your site, tells you what to improve and why, and drafts the changes.
-You approve each change, and you can always see what was done and what happened.
+Your own visibility agent, inside the Claude you already use.
+It finds what stops the right customers from finding your business on Google and AI search.
+Then, for each fix, you choose: it shows you how, step by step, or it does it for you.
+Nothing goes live without your yes, and you can always see what was done and what happened.
+
+## Show me, or do it for me
+
+Every step can be done two ways:
+
+- **Show me how.** It teaches you one screen at a time: what to open, what to click, what you should see next. This works anywhere you use Claude, including the phone app.
+- **Do it for me.** It does the step while you watch, then stops and shows you the exact result before anything is saved or published. This needs a Claude that can act for you on your computer: a connected website platform, Claude in Chrome, or computer use in the Claude desktop app. Which of these you have depends on your Claude plan and app.
+
+It never types your passwords or sign-in codes, never pays for anything, and never writes or posts a review.
 
 ## Install
 
@@ -32,7 +42,7 @@ In Claude Code, type `/coach`. One small card opens beside the chat. It answers 
 
 - **Is it working?** One number, such as taps on Call from Google this month, against last month and against where you started. Under it: where the number was counted and the last day it covers.
 - **How healthy is my visibility?** One line: how many of the places customers look for you are in good shape. Press it and the coach walks you through each one.
-- **What do I do next, and why?** One step, about how long it takes, and one sentence on how it gets you ahead. Below it, anything waiting for your OK. Nothing goes live without your yes.
+- **What do I do next, and why?** One step, about how long it takes, one sentence on how it gets you ahead, and two buttons: Do It for Me, or Show Me How. Below it, anything waiting for your OK. Nothing goes live without your yes.
 
 Before you have a result, your visibility health is the headline. For anything else, ask in the chat.
 

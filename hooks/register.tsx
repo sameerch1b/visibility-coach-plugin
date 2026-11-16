@@ -2,7 +2,8 @@
 //
 // It answers three questions: is it working (one number, with where it was
 // counted), how healthy am I (one line), what do I do next and why (one
-// step). Everything else is asked for in the chat.
+// step, done for the owner or taught to them). Everything else is asked for
+// in the chat.
 //
 // It only displays. It holds no method, no scoring and no playbook text: it
 // mirrors the `panel` object the Visibility Coach server sends (the contract
@@ -389,8 +390,9 @@ const toneColor = (tone: CoachResult['tone']): string | undefined => {
 
 // ---------------------------------------------------------------------------
 // Drawing. One card, top to bottom: whose it is, the one number and where it
-// was counted, the one next step with the one tinted button and why it
-// matters, then one line each for visibility health and what is waiting.
+// was counted, the one next step with why it matters and its two ways of
+// getting done (one tinted), then one line each for visibility health and
+// what is waiting.
 
 /** The headline: the result when there is one, else visibility health from
  * the first check, else how to begin. */
@@ -503,27 +505,33 @@ const full = (
 
       {shown?.next !== undefined && (
         <Box flexDirection="column">
-          <Box justifyContent="space-between" columnGap={1}>
-            <Box flexDirection="column">
-              <Text weight="medium">{shown.next.title}</Text>
-              {shown.next.minutes !== undefined && (
-                <Text dimColor size="footnote">
-                  {shown.next.minutes} minutes
-                </Text>
-              )}
-            </Box>
-            <Button
-              key="start"
-              label="Start"
-              variant="primary"
-              onPress={() => fill($, "Let's do my next step.")}
-            />
-          </Box>
+          <Text weight="medium">{shown.next.title}</Text>
+          {shown.next.minutes !== undefined && (
+            <Text dimColor size="footnote">
+              {shown.next.minutes} minutes
+            </Text>
+          )}
           {shown.next.why !== undefined && (
             <Text dimColor size="footnote">
               {shown.next.why}
             </Text>
           )}
+          {/* The owner picks how the step gets done: the coach does it while
+              they watch, or teaches it one screen at a time. Either way the
+              press only writes the ask; the owner sends it. */}
+          <Box columnGap={1}>
+            <Button
+              key="do"
+              label="Do It for Me"
+              variant="primary"
+              onPress={() => fill($, 'Do my next step for me.')}
+            />
+            <Button
+              key="show"
+              label="Show Me How"
+              onPress={() => fill($, 'Show me how to do my next step.')}
+            />
+          </Box>
         </Box>
       )}
 

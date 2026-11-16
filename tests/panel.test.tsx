@@ -78,7 +78,11 @@ test('the card shows the number and its source, health, the next step and why, o
     expect(
       await ui.find({ type: 'Text', text: /^Google shows you to people searching in the suburbs you name\.$/ }),
     ).toBeDefined()
-    expect((await ui.find({ key: 'start' }))?.props.variant).toBe('primary')
+    // Two ways to get the step done; only one is tinted.
+    expect((await ui.find({ key: 'do' }))?.props.variant).toBe('primary')
+    expect((await ui.find({ key: 'do' }))?.props.label).toBe('Do It for Me')
+    expect((await ui.find({ key: 'show' }))?.props.label).toBe('Show Me How')
+    expect((await ui.find({ key: 'show' }))?.props.variant).toBeUndefined()
     expect((await ui.find({ key: 'health' }))?.text).toBe('Visibility health: 3 of 4 good ›')
     expect((await ui.find({ key: 'review' }))?.text).toBe('2 waiting for your OK ›')
     expect(await ui.find({ type: 'Text', text: /^Next check-in Nov 16$/ })).toBeDefined()
@@ -112,12 +116,14 @@ test('a press only puts words in the message box for the owner to send', async (
   await $.tool.call({ tool: START })
 
   const ui = await $.ui.mount({ ...pane(), surface: 'desktop' })
-  await ui.press({ key: 'start' })
+  await ui.press({ key: 'do' })
+  await ui.press({ key: 'show' })
   await ui.press({ key: 'health' })
   await ui.press({ key: 'review' })
 
   expect(filled).toEqual([
-    "Let's do my next step.",
+    'Do my next step for me.',
+    'Show me how to do my next step.',
     'Walk me through my visibility health.',
     "Show me what's waiting for my OK.",
   ])
@@ -223,6 +229,7 @@ test('signed out, the card offers one thing: sign in', async ($, on) => {
     expect(await ui.find({ type: 'Text', text: /^Sign in to begin$/ })).toBeDefined()
     expect((await ui.find({ key: 'sign-in' }))?.props.variant).toBe('primary')
     expect(await ui.find({ key: 'start' })).toBeUndefined()
+    expect(await ui.find({ key: 'do' })).toBeUndefined()
     await ui.unmount()
   }
 
