@@ -242,6 +242,10 @@ test('signed out, the card offers one thing: sign in', async ($, on) => {
 
   expect(filled).toEqual(['/mcp'])
   expect(await ui.find({ type: 'Text', text: /Choose litmark/ })).toBeDefined()
+  // Access follows the email the owner paid with, so the steps say so.
+  expect(
+    await ui.find({ type: 'Text', text: /Use the email you bought Litmark with/ }),
+  ).toBeDefined()
   await ui.unmount()
 })
 
@@ -349,6 +353,12 @@ test('with nothing read yet the card says what to say and can show an example', 
 
     expect(await ui.find({ type: 'Text', text: /^See how customers find you$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^Say "help me show up on Google"\.$/ })).toBeDefined()
+    // And what saying it starts.
+    expect(await ui.find({ type: 'Text', text: /^Then, in about ten minutes:$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^1\. A few questions about your business\.$/ })).toBeDefined()
+    expect(
+      await ui.find({ type: 'Text', text: /^3\. Your first fix: done for you, or shown to you\.$/ }),
+    ).toBeDefined()
     await ui.press({ key: 'example' })
     expect(await ui.find({ type: 'Text', text: /Example\. Not your business\./ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^Harbour Plumbing$/ })).toBeDefined()
@@ -368,4 +378,90 @@ test('a value an earlier version stored is declined', async ($, on) => {
 
   expect(await ui.find({ type: 'Text', text: /^See how customers find you$/ })).toBeDefined()
   await ui.unmount()
+})
+
+test('the first session after installing says how to begin, once', async ($, on) => {
+  const said: string[] = []
+  mock.store(on)
+  on('command.register', () => ({ value: { command: 'litmark' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('ui.toast', (_, e) => {
+    said.push(e.text)
+
+    return { value: undefined }
+  })
+
+  // A run with nobody at the prompt says nothing, and does not use it up.
+  await $.session.start({ cwd: '/', surface: null, isInteractive: false })
+  expect(said).toEqual([])
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  expect(said).toEqual(['Litmark is ready. Say "help me show up on Google" to begin.'])
+})
+
+test('once the owner has talked to Litmark the card stops saying how to begin', async ($, on) => {
+  // A store of the test's own, so what is written can be read back here.
+  const kept: string[] = []
+  mock.clock(on)
+  on('store.get', () => ({ value: undefined }))
+  on('store.set', (_, e) => {
+    kept.push(`${e.key}=${String(e.value)}`)
+
+    return { value: undefined }
+  })
+  on('command.register', () => ({ value: { command: 'litmark' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('tool.list', () => ({ value: [tool(START)] }))
+  // The server answers, with nothing for the card yet.
+  on('tool.call', () => ({ result: { content: [{ type: 'text', text: 'Welcome.' }] } }))
+
+  await $.tool.call({ tool: START })
+
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ ...pane(), surface })
+
+    expect(await ui.find({ type: 'Text', text: /^You are under way$/ })).toBeDefined()
+    expect(
+      await ui.find({ type: 'Text', text: /^Keep going in the chat\. Say "what's next\?" any time\.$/ }),
+    ).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /help me show up on Google/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /in about ten minutes/ })).toBeUndefined()
+    await ui.unmount()
+
+    const small = await $.ui.mount({ ...pane('widget'), surface })
+
+    expect(await small.find({ type: 'Text', text: /help me show up on Google/ })).toBeUndefined()
+    await small.unmount()
+  }
+
+  // It is written down once, for the sessions after this one.
+  expect(kept).toEqual(['begun=true'])
+})
+
+test('an owner who started in an earlier session is not asked to start again', async ($, on) => {
+  mock.store(on, { begun: true, welcomed: true })
+  on('command.register', () => ({ value: { command: 'litmark' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  const ui = await $.ui.mount({ ...pane(), surface: 'desktop' })
+
+  expect(await ui.find({ type: 'Text', text: /^You are under way$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /help me show up on Google/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('the small card says what to say before the owner has started', async ($, on) => {
+  mock.store(on)
+
+  const small = await $.ui.mount({ ...pane('widget'), surface: 'desktop' })
+
+  expect(await small.find({ type: 'Text', text: /^Litmark$/ })).toBeDefined()
+  expect(await small.find({ type: 'Text', text: /^Say "help me show up on Google"$/ })).toBeDefined()
+  await small.unmount()
 })

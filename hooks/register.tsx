@@ -10,6 +10,9 @@
 // step, done for the owner or taught to them). Everything else is asked for
 // in the chat.
 //
+// Before there is anything to show it is the owner's way in: how to sign in,
+// the one thing to say, and what happens in the first ten minutes.
+//
 // It only displays. It holds no method, no scoring and no playbook text: it
 // mirrors the `panel` object the Litmark server sends (the contract
 // is ../types/index.d.ts). It reads no files, runs no processes and makes no
@@ -76,6 +79,12 @@ const isSigningIn = atom(
   { plugin: 'litmark', key: 'isSigningIn' } as const,
   false,
 )
+// Whether the owner has talked to Litmark yet. Until they have, the card
+// says how to begin; after, it gets out of the way.
+const hasBegun = atom({ plugin: 'litmark', key: 'hasBegun' } as const, false)
+
+// Said once, the first time after installing.
+const WELCOME = 'Litmark is ready. Say "help me show up on Google" to begin.'
 
 // Shown only on the owner's press, under a banner that says it is one.
 const EXAMPLE: CoachPanel = {
@@ -299,6 +308,16 @@ const keep = async ($: EngineInterface, fresh: CoachPanel): Promise<void> => {
   await $.store.set('panel', fresh)
 }
 
+/** The owner has talked to Litmark: remembered across sessions. */
+const begin = async ($: EngineInterface): Promise<void> => {
+  if ((await read($, hasBegun)) === true) {
+    return
+  }
+
+  await update($, hasBegun, () => true)
+  await $.store.set('begun', true)
+}
+
 const stamp = async ($: EngineInterface): Promise<string> =>
   new Date(await $.clock.now()).toISOString()
 
@@ -374,7 +393,14 @@ const day = (iso: string | undefined): string | undefined => {
 const SIGN_IN_STEPS = [
   '1. Send /mcp (it is in the message box now).',
   '2. Choose litmark.',
-  '3. Sign in with the link we email you.',
+  '3. Use the email you bought Litmark with. We email you a sign-in link.',
+]
+
+// What the first ten minutes hold, for an owner who has not started.
+const FIRST_STEPS = [
+  '1. A few questions about your business.',
+  '2. A first check of where you stand.',
+  '3. Your first fix: done for you, or shown to you.',
 ]
 
 /** Visibility health in the owner's words: "3 of 4". */
@@ -417,6 +443,7 @@ const headline = (
   { Box, Text }: UI,
   shown: CoachPanel | null,
   how: CoachLink,
+  isUnderWay: boolean,
 ): RenderElement => {
   const result = shown?.result
   const standing = shown?.standing ?? []
@@ -467,17 +494,40 @@ const headline = (
     )
   }
 
+  if (how !== 'on' && how !== 'unknown') {
+    return (
+      <Box flexDirection="column">
+        <Text size="heading" weight="semibold">
+          Sign in to begin
+        </Text>
+        <Text dimColor size="footnote">
+          One email link. No password.
+        </Text>
+      </Box>
+    )
+  }
+
+  // Talked to Litmark, and the first check has not come back yet.
+  if (isUnderWay) {
+    return (
+      <Box flexDirection="column">
+        <Text size="heading" weight="semibold">
+          You are under way
+        </Text>
+        <Text dimColor size="footnote">
+          Keep going in the chat. Say "what's next?" any time.
+        </Text>
+      </Box>
+    )
+  }
+
   return (
     <Box flexDirection="column">
       <Text size="heading" weight="semibold">
-        {how === 'on' || how === 'unknown'
-          ? 'See how customers find you'
-          : 'Sign in to begin'}
+        See how customers find you
       </Text>
       <Text dimColor size="footnote">
-        {how === 'on' || how === 'unknown'
-          ? 'It takes your website address and about two minutes.'
-          : 'One email link. No password.'}
+        It takes your website address and about two minutes.
       </Text>
     </Box>
   )
@@ -490,6 +540,7 @@ const full = (
   how: CoachLink,
   isSample: boolean,
   isStepping: boolean,
+  isUnderWay: boolean,
 ): RenderElement => {
   const { Box, Text, Button, Link } = ui
   const hasStarted =
@@ -517,7 +568,7 @@ const full = (
         <Text dimColor size="footnote">
           {shown?.business ?? TITLE}
         </Text>
-        {headline(ui, shown, how)}
+        {headline(ui, shown, how, isUnderWay)}
       </Box>
 
       {shown?.next !== undefined && (
@@ -562,11 +613,25 @@ const full = (
                 }}
               />
             ) : (
-              shown?.next === undefined && (
+              shown?.next === undefined &&
+              !isUnderWay && (
                 <Text size="footnote">Say "help me show up on Google".</Text>
               )
             )}
           </Box>
+          {/* What saying it starts, so the first ten minutes hold no surprise. */}
+          {!needsSignIn && shown?.next === undefined && !isUnderWay && (
+            <Box flexDirection="column">
+              <Text dimColor size="footnote">
+                Then, in about ten minutes:
+              </Text>
+              {FIRST_STEPS.map(step => (
+                <Text dimColor size="footnote">
+                  {step}
+                </Text>
+              ))}
+            </Box>
+          )}
           <Box>
             <Button
               key="example"
@@ -605,6 +670,7 @@ const glance = (
   { Box, Text }: UI,
   shown: CoachPanel | null,
   how: CoachLink,
+  isUnderWay: boolean,
 ): RenderElement => {
   const waiting = shown?.waiting ?? 0
   const result = shown?.result
@@ -618,6 +684,8 @@ const glance = (
     note = `${waiting} waiting for your OK`
   } else if (how !== 'on' && how !== 'unknown') {
     note = 'Sign in to start'
+  } else if (shown === null && !isUnderWay) {
+    note = 'Say "help me show up on Google"'
   }
 
   return (
@@ -668,6 +736,21 @@ export const register: Register = (on, options) => {
       await update($, panel, current => current ?? kept)
     }
 
+    try {
+      if ((await $.store.get('begun')) === true) {
+        await update($, hasBegun, () => true)
+      }
+
+      // Once, the first time after installing, and only where someone is
+      // there to read it: the one thing to say.
+      if (e.isInteractive && (await $.store.get('welcomed')) !== true) {
+        await $.store.set('welcomed', true)
+        $.ui.toast(WELCOME, { timeoutMs: 12000 })
+      }
+    } catch {
+      // A welcome that cannot show must never hold up the session.
+    }
+
     return next(e)
   })
 
@@ -710,10 +793,14 @@ export const register: Register = (on, options) => {
     try {
       await show($)
 
-      const fresh =
-        ran.deny === undefined && ran.isError !== true
-          ? toPanel(findPanel(ran.result, ran.text), await stamp($))
-          : undefined
+      const hasAnswered = ran.deny === undefined && ran.isError !== true
+      const fresh = hasAnswered
+        ? toPanel(findPanel(ran.result, ran.text), await stamp($))
+        : undefined
+
+      if (hasAnswered) {
+        await begin($)
+      }
 
       if (fresh !== undefined) {
         await keep($, fresh)
@@ -749,9 +836,18 @@ export const register: Register = (on, options) => {
     const isSample = (await read($, isExample)) === true
     const shown = isSample ? EXAMPLE : await read($, panel)
     const how = await read($, coach)
+    const isUnderWay = (await read($, hasBegun)) === true
 
     return e.props.placement === 'widget'
-      ? glance(ui, shown, how)
-      : full(ui, $, shown, how, isSample, (await read($, isSigningIn)) === true)
+      ? glance(ui, shown, how, isUnderWay)
+      : full(
+          ui,
+          $,
+          shown,
+          how,
+          isSample,
+          (await read($, isSigningIn)) === true,
+          isUnderWay,
+        )
   })
 }

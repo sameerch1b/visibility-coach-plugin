@@ -96,6 +96,8 @@ declare module 'claude-code' {
       coach: Shaped<CoachLink>
       isExample: boolean
       isSigningIn: boolean
+      /** Whether the owner has talked to Litmark yet. */
+      hasBegun: boolean
     }
   }
 }
