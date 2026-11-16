@@ -1,7 +1,7 @@
 {
-  "name": "visibility-coach",
-  "displayName": "Visibility Coach",
-  "version": "0.6.0",
+  "name": "litmark",
+  "displayName": "Litmark",
+  "version": "0.7.0",
   "description": "Your own visibility agent, inside the Claude you already use. It finds what stops customers from finding you on Google and AI search, then shows you each fix step by step or does it for you. Nothing goes live without your yes.",
   "author": {
     "name": "Sameer Chib"

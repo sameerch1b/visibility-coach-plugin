@@ -1,4 +1,9 @@
-// The Visibility Coach panel: one small card beside the chat.
+// The Litmark card: one small card beside the chat.
+//
+// It is a display. The owner talks to Litmark in the chat, and nothing on
+// the card is needed to get work done: it shows where things stand and what
+// to say next. Its only presses are Sign In (before there is a connection),
+// See an Example and a Renew link.
 //
 // It answers three questions: is it working (one number, with where it was
 // counted), how healthy am I (one line), what do I do next and why (one
@@ -6,7 +11,7 @@
 // in the chat.
 //
 // It only displays. It holds no method, no scoring and no playbook text: it
-// mirrors the `panel` object the Visibility Coach server sends (the contract
+// mirrors the `panel` object the Litmark server sends (the contract
 // is ../types/index.d.ts). It reads no files, runs no processes and makes no
 // network requests of its own; the one server call it makes is `start_here`,
 // on the owner's own command, over the session's existing connection. It
@@ -31,9 +36,9 @@ import type {
 type UI = Pick<ElementTable, 'Box' | 'Text' | 'Button' | 'Link'>
 
 const PANE = 'coach'
-const TITLE = 'Visibility Coach'
+const TITLE = 'Litmark'
 // The server's key in this plugin's .mcp.json.
-const COACH = 'visibility-coach'
+const COACH = 'litmark'
 // Microsoft's Clarity server, the other key there. Optional.
 const CLARITY = 'clarity'
 
@@ -55,20 +60,20 @@ const BAD = 'error'
 
 // Change a tag when the value's fields change: it declines what an earlier
 // version stored, which outlives a reload.
-const panel = atom({ plugin: 'visibility-coach', key: 'panel' } as const, null, {
+const panel = atom({ plugin: 'litmark', key: 'panel' } as const, null, {
   shape: 'panel-4',
 })
 const coach = atom(
-  { plugin: 'visibility-coach', key: 'coach' } as const,
+  { plugin: 'litmark', key: 'coach' } as const,
   'unknown',
   { shape: 'coach-1' },
 )
 const isExample = atom(
-  { plugin: 'visibility-coach', key: 'isExample' } as const,
+  { plugin: 'litmark', key: 'isExample' } as const,
   false,
 )
 const isSigningIn = atom(
-  { plugin: 'visibility-coach', key: 'isSigningIn' } as const,
+  { plugin: 'litmark', key: 'isSigningIn' } as const,
   false,
 )
 
@@ -95,6 +100,7 @@ const EXAMPLE: CoachPanel = {
     minutes: 10,
     why: 'Google shows you to people searching in the suburbs you name.',
   },
+  done: 6,
   waiting: 2,
   checkIn: '2026-11-16',
 }
@@ -184,6 +190,7 @@ const toPanel = (raw: unknown, readAt: string): CoachPanel | undefined => {
             minutes: count(field(step, 'minutes'), 240),
             why: text(field(step, 'why'), 140),
           },
+    done: count(field(raw, 'done'), 999),
     waiting: count(field(raw, 'waiting'), 99),
     checkIn: text(field(raw, 'checkIn'), 30),
     asOf: text(field(raw, 'asOf'), 40) ?? readAt,
@@ -231,11 +238,12 @@ const findPanel = (result: unknown, modelText?: string): unknown => {
 // The connection to the coach.
 
 /** The tool's own name when it belongs to the coach's server, whatever name
- * that server runs under (this plugin's, or a connector the owner added). */
+ * that server runs under: this plugin's, or a connector the owner added,
+ * under today's name or the one it had before. */
 const coachTool = (tool: string): string | undefined => {
   const [, server = '', name] = /^mcp__(.+?)__(.+)$/.exec(tool) ?? []
 
-  return /visibility[-_ ]?coach/i.test(server) ? name : undefined
+  return /litmark|visibility[-_ ]?coach/i.test(server) ? name : undefined
 }
 
 /** Whether a server about to join the session is the Microsoft Clarity entry
@@ -330,8 +338,8 @@ const joinClarity = async ($: EngineInterface): Promise<void> => {
   }
 }
 
-/** Puts words in the message box for the owner to send: the panel never
- * sends anything on its own. */
+/** Puts words in the message box for the owner to send: the card never
+ * sends anything on its own. Used for signing in only. */
 const fill = async ($: EngineInterface, words: string): Promise<void> => {
   const { isFilled } = await $.prompt.fill({ text: words })
 
@@ -365,7 +373,7 @@ const day = (iso: string | undefined): string | undefined => {
 
 const SIGN_IN_STEPS = [
   '1. Send /mcp (it is in the message box now).',
-  '2. Choose visibility-coach.',
+  '2. Choose litmark.',
   '3. Sign in with the link we email you.',
 ]
 
@@ -380,6 +388,16 @@ const counted = (result: CoachResult): string => {
   return `From ${SOURCES[result.source]}${until === undefined ? '' : `, through ${until}`}`
 }
 
+/** The work so far, in one line: "6 done · 2 waiting for your OK". */
+const tally = (done: number, waiting: number): string | undefined => {
+  const parts = [
+    done > 0 ? `${done} done` : undefined,
+    waiting > 0 ? `${waiting} waiting for your OK` : undefined,
+  ].filter(part => part !== undefined)
+
+  return parts.length === 0 ? undefined : parts.join(' · ')
+}
+
 const toneColor = (tone: CoachResult['tone']): string | undefined => {
   if (tone === 'good') {
     return GOOD
@@ -390,9 +408,8 @@ const toneColor = (tone: CoachResult['tone']): string | undefined => {
 
 // ---------------------------------------------------------------------------
 // Drawing. One card, top to bottom: whose it is, the one number and where it
-// was counted, the one next step with why it matters and its two ways of
-// getting done (one tinted), then one line each for visibility health and
-// what is waiting.
+// was counted, the one next step with why it matters and what to say to get
+// it done, then one line each for visibility health and the work so far.
 
 /** The headline: the result when there is one, else visibility health from
  * the first check, else how to begin. */
@@ -478,7 +495,7 @@ const full = (
   const hasStarted =
     shown?.result !== undefined || (shown?.standing?.length ?? 0) > 0
   const needsSignIn = !isSample && how !== 'on' && how !== 'unknown'
-  const waiting = shown?.waiting ?? 0
+  const work = tally(shown?.done ?? 0, shown?.waiting ?? 0)
   const standing = shown?.standing ?? []
   const checkIn = day(shown?.checkIn)
   const hasLapsed = shown?.plan !== undefined && shown.plan.state !== 'active'
@@ -516,43 +533,19 @@ const full = (
               {shown.next.why}
             </Text>
           )}
-          {/* The owner picks how the step gets done: the coach does it while
-              they watch, or teaches it one screen at a time. Either way the
-              press only writes the ask; the owner sends it. */}
-          <Box columnGap={1}>
-            <Button
-              key="do"
-              label="Do It for Me"
-              variant="primary"
-              onPress={() => fill($, 'Do my next step for me.')}
-            />
-            <Button
-              key="show"
-              label="Show Me How"
-              onPress={() => fill($, 'Show me how to do my next step.')}
-            />
-          </Box>
+          {/* The step gets done in the chat: the card only says how to ask. */}
+          <Text size="footnote">Say "do it for me" or "show me how".</Text>
         </Box>
       )}
 
-      {shown?.result !== undefined && standing.length > 0 && (
-        <Button
-          key="health"
-          plain
-          onPress={() => fill($, 'Walk me through my visibility health.')}
-        >
-          {`Visibility health: ${health(standing)} good ›`}
-        </Button>
-      )}
-
-      {waiting > 0 && (
-        <Button
-          key="review"
-          plain
-          onPress={() => fill($, "Show me what's waiting for my OK.")}
-        >
-          {String(waiting)} waiting for your OK ›
-        </Button>
+      {(work !== undefined ||
+        (shown?.result !== undefined && standing.length > 0)) && (
+        <Box flexDirection="column">
+          {shown?.result !== undefined && standing.length > 0 && (
+            <Text>{`Visibility health: ${health(standing)} good`}</Text>
+          )}
+          {work !== undefined && <Text>{work}</Text>}
+        </Box>
       )}
 
       {!hasStarted && !isSample && (
@@ -570,14 +563,11 @@ const full = (
               />
             ) : (
               shown?.next === undefined && (
-                <Button
-                  key="start"
-                  label="Start"
-                  variant="primary"
-                  onPress={() => fill($, 'Help me show up on Google.')}
-                />
+                <Text size="footnote">Say "help me show up on Google".</Text>
               )
             )}
+          </Box>
+          <Box>
             <Button
               key="example"
               label="See an Example"
@@ -667,8 +657,8 @@ export const register: Register = (on, options) => {
 
   on('session.start', async ($, e, next) => {
     await $.command.register({
-      name: 'coach',
-      description: 'Show your Visibility Coach panel',
+      name: 'litmark',
+      description: 'Show your Litmark card',
     })
 
     // What the last session read, so the panel is not blank at the start.
@@ -681,7 +671,7 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
-  on('command.run', { command: 'coach' }, async $ => {
+  on('command.run', { command: 'litmark' }, async $ => {
     hasOpened = true
     await $.ui.open({ id: PANE, title: TITLE })
     void refresh($)
@@ -690,7 +680,7 @@ export const register: Register = (on, options) => {
       void joinClarity($)
     }
 
-    return { text: 'Visibility Coach panel opened.' }
+    return { text: 'Litmark card opened.' }
   })
 
   // The owner asked for the coach: show the panel, even when the server is
@@ -749,7 +739,7 @@ export const register: Register = (on, options) => {
         isConnected: false,
         reason: 'disabled',
         message:
-          'Microsoft Clarity is off until you add your Clarity token: /plugin configure visibility-coach.',
+          'Microsoft Clarity is off until you add your Clarity token: /plugin configure litmark.',
       },
     }
   }).catch(($, e, next) => next(e))

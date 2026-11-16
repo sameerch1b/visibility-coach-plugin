@@ -1,4 +1,4 @@
-// The panel's contract: what the Visibility Coach panel shows, and where
+// The card's contract: what the Litmark card shows, and where
 // it comes from. Display data only. No method, scoring or playbook text
 // belongs here or anywhere else in this repository.
 //
@@ -7,9 +7,10 @@
 // when the result is JSON text). Every field is optional: the panel draws
 // what it is given and an honest empty state for the rest.
 //
-// The panel is one card that answers three questions: is it working (one
-// number), how healthy am I (one line), what do I do next and why (one
-// step). Anything more is asked for in the chat.
+// The card is a display: the owner talks to Litmark in the chat. It answers
+// three questions: is it working (one number), how healthy am I (one line),
+// what happens next and why (one step). Anything more is asked for in the
+// chat.
 
 /** One line of visibility health: how the business looks to anyone today. */
 export type CoachCheck = {
@@ -75,6 +76,8 @@ export type CoachPanel = {
   /** The one thing to do next. One, not a list. `why` is one plain sentence
    * on how it gets the owner ahead: the panel teaches as it goes. */
   next?: { title: string; minutes?: number; why?: string }
+  /** How many changes are live so far: the work done, as one number. */
+  done?: number
   /** How many drafted changes are waiting for the owner's yes. */
   waiting?: number
   /** ISO date of the next weekly check-in; absent when there is none. */
@@ -88,7 +91,7 @@ export type CoachLink = 'on' | 'sign-in' | 'off' | 'missing' | 'error' | 'unknow
 
 declare module 'claude-code' {
   interface PluginState {
-    'visibility-coach': {
+    litmark: {
       panel: Shaped<CoachPanel | null>
       coach: Shaped<CoachLink>
       isExample: boolean

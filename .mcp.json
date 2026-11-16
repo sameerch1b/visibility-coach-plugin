@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "visibility-coach": {
+    "litmark": {
       "type": "http",
       "url": "https://visibility-coach.vercel.app/mcp"
     },

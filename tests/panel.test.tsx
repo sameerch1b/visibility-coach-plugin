@@ -2,9 +2,9 @@ import { expect, mock, test } from 'claude-code/testing'
 
 import { isOwnClarity } from '../hooks/register'
 
-const PLUGIN = 'visibility-coach'
+const PLUGIN = 'litmark'
 const SURFACES = ['terminal', 'desktop', 'vscode', 'mobile'] as const
-const START = 'mcp__plugin_visibility-coach_visibility-coach__start_here'
+const START = 'mcp__plugin_litmark_litmark__start_here'
 
 const pane = (placement: 'dock' | 'widget' = 'dock') =>
   ({
@@ -12,7 +12,7 @@ const pane = (placement: 'dock' | 'widget' = 'dock') =>
     component: 'Pane',
     requestId: 'coach',
     props: {
-      title: 'Visibility Coach',
+      title: 'Litmark',
       isFocused: false,
       bodyColumns: 44,
       placement,
@@ -43,16 +43,17 @@ const PANEL = {
     minutes: 10,
     why: 'Google shows you to people searching in the suburbs you name.',
   },
+  done: 6,
   waiting: 2,
   checkIn: '2026-11-16',
 }
 
 const tool = (name: string) => ({ name, description: '', mcp: true })
 
-test('the card shows the number and its source, health, the next step and why, on every surface', async ($, on) => {
+test('the card shows the number and its source, health, the next step and the work so far, on every surface', async ($, on) => {
   mock.store(on)
   mock.clock(on)
-  on('command.register', () => ({ value: { command: 'coach' } }))
+  on('command.register', () => ({ value: { command: 'litmark' } }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('tool.list', () => ({ value: [tool(START)] }))
@@ -78,17 +79,9 @@ test('the card shows the number and its source, health, the next step and why, o
     expect(
       await ui.find({ type: 'Text', text: /^Google shows you to people searching in the suburbs you name\.$/ }),
     ).toBeDefined()
-    // Two ways to get the step done; only one is tinted.
-    expect((await ui.find({ key: 'do' }))?.props.variant).toBe('primary')
-    expect((await ui.find({ key: 'do' }))?.props.label).toBe('Do It for Me')
-    expect((await ui.find({ key: 'show' }))?.props.label).toBe('Show Me How')
-    expect((await ui.find({ key: 'show' }))?.props.variant).toBeUndefined()
-    expect((await ui.find({ key: 'health' }))?.text).toBe('Visibility health: 3 of 4 good ›')
-    expect((await ui.find({ key: 'review' }))?.text).toBe('2 waiting for your OK ›')
+    expect(await ui.find({ type: 'Text', text: /^Visibility health: 3 of 4 good$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^6 done · 2 waiting for your OK$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^Next check-in Nov 16$/ })).toBeDefined()
-    // Nothing but the card: no setup, no connections, no other services.
-    expect(await ui.find({ key: 'sign-in' })).toBeUndefined()
-    expect(await ui.find({ key: 'example' })).toBeUndefined()
     await ui.unmount()
 
     const small = await $.ui.mount({ ...pane('widget'), surface })
@@ -99,35 +92,26 @@ test('the card shows the number and its source, health, the next step and why, o
   }
 })
 
-test('a press only puts words in the message box for the owner to send', async ($, on) => {
-  const filled: string[] = []
+test('once the coach is running the card has nothing to press: the owner talks to Claude', async ($, on) => {
   mock.store(on)
   mock.clock(on)
   on('ui.open', () => ({ value: { isPlaced: true } }))
-  on('ui.toast', () => ({ value: undefined }))
-  on('prompt.fill', (_, e) => {
-    filled.push(e.text)
-
-    return { isFilled: true }
-  })
   on('tool.list', () => ({ value: [tool(START)] }))
   on('tool.call', () => ({ result: { structuredContent: { panel: PANEL } } }))
 
   await $.tool.call({ tool: START })
 
-  const ui = await $.ui.mount({ ...pane(), surface: 'desktop' })
-  await ui.press({ key: 'do' })
-  await ui.press({ key: 'show' })
-  await ui.press({ key: 'health' })
-  await ui.press({ key: 'review' })
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ ...pane(), surface })
 
-  expect(filled).toEqual([
-    'Do my next step for me.',
-    'Show me how to do my next step.',
-    'Walk me through my visibility health.',
-    "Show me what's waiting for my OK.",
-  ])
-  await ui.unmount()
+    expect(await ui.find({ type: 'Button' })).toBeUndefined()
+    expect(await ui.find({ type: 'Link' })).toBeUndefined()
+    // It says how to ask instead.
+    expect(
+      await ui.find({ type: 'Text', text: /^Say "do it for me" or "show me how"\.$/ }),
+    ).toBeDefined()
+    await ui.unmount()
+  }
 })
 
 test('the result of a coach call reaches the model unchanged', async ($, on) => {
@@ -140,6 +124,23 @@ test('the result of a coach call reaches the model unchanged', async ($, on) => 
   const ran = await $.tool.call({ tool: START })
 
   expect(ran.result).toEqual({ structuredContent: { panel: PANEL } })
+})
+
+test('the coach is recognised under the connector name it had before', async ($, on) => {
+  // An owner who added the connector themselves, before the rename.
+  const old = 'mcp__visibility-coach__start_here'
+  mock.store(on)
+  mock.clock(on)
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('tool.list', () => ({ value: [tool(old)] }))
+  on('tool.call', () => ({ result: { structuredContent: { panel: PANEL } } }))
+
+  await $.tool.call({ tool: old })
+
+  const ui = await $.ui.mount({ ...pane(), surface: 'desktop' })
+
+  expect(await ui.find({ type: 'Text', text: /^14$/ })).toBeDefined()
+  await ui.unmount()
 })
 
 test('a call to any other tool opens nothing and reads nothing', async ($, on) => {
@@ -176,6 +177,7 @@ test('text from outside is cut to size and an unsafe renew link is dropped', asy
         business: `Evil\u0007Corp ${'x'.repeat(500)}`,
         plan: { state: 'ended', buyUrl },
         result: { value: '9'.repeat(40), label: 'calls', source: 'owner' },
+        done: 5000000,
         waiting: 100000,
       },
     },
@@ -190,7 +192,8 @@ test('text from outside is cut to size and an unsafe renew link is dropped', asy
   expect(await ui.find({ type: 'Text', text: /^From what you told me$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /Your plan has ended/ })).toBeDefined()
   expect(await ui.find({ type: 'Link' })).toBeUndefined()
-  expect(await ui.find({ key: 'review' })).toBeUndefined()
+  // Counts too large to be true are not shown at all.
+  expect(await ui.find({ type: 'Text', text: /done|waiting for your OK/ })).toBeUndefined()
   await ui.unmount()
 
   buyUrl = 'https://example.com/renew'
@@ -228,20 +231,21 @@ test('signed out, the card offers one thing: sign in', async ($, on) => {
 
     expect(await ui.find({ type: 'Text', text: /^Sign in to begin$/ })).toBeDefined()
     expect((await ui.find({ key: 'sign-in' }))?.props.variant).toBe('primary')
-    expect(await ui.find({ key: 'start' })).toBeUndefined()
-    expect(await ui.find({ key: 'do' })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /help me show up on Google/ })).toBeUndefined()
     await ui.unmount()
   }
 
+  // The one press that writes anything: it puts `/mcp` in the message box
+  // for the owner to send.
   const ui = await $.ui.mount({ ...pane(), surface: 'desktop' })
   await ui.press({ key: 'sign-in' })
 
   expect(filled).toEqual(['/mcp'])
-  expect(await ui.find({ type: 'Text', text: /Choose visibility-coach/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Choose litmark/ })).toBeDefined()
   await ui.unmount()
 })
 
-test('the first check is the headline until a result replaces it', async ($, on) => {
+test('visibility health is the headline until a result replaces it', async ($, on) => {
   const first = {
     business: 'Harbour Plumbing',
     standing: [
@@ -271,7 +275,7 @@ test('the first check is the headline until a result replaces it', async ($, on)
     ).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^Approve your opening hours$/ })).toBeDefined()
     // Health is the headline here, so it is not repeated as a line.
-    expect(await ui.find({ key: 'health' })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /^Visibility health:/ })).toBeUndefined()
     await ui.unmount()
   }
 
@@ -282,7 +286,7 @@ test('the first check is the headline until a result replaces it', async ($, on)
 
   expect(await ui.find({ type: 'Text', text: /^1 of 4$/ })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: /^14$/ })).toBeDefined()
-  expect((await ui.find({ key: 'health' }))?.text).toBe('Visibility health: 1 of 4 good ›')
+  expect(await ui.find({ type: 'Text', text: /^Visibility health: 1 of 4 good$/ })).toBeDefined()
   await ui.unmount()
 })
 
@@ -304,7 +308,7 @@ test('a number that does not say where it was counted is not drawn', async ($, o
     },
   }))
 
-  // No source, then one the panel has never heard of: no number either time.
+  // No source, then one the card has never heard of: no number either time.
   for (source of [undefined, 'a guess']) {
     await $.tool.call({ tool: START })
 
@@ -327,25 +331,24 @@ test('a number that does not say where it was counted is not drawn', async ($, o
 })
 
 test("only this plugin's own Clarity entry is ever held back", () => {
-  const ours = { server: 'plugin:visibility-coach:clarity', provider: { plugin: PLUGIN } }
+  const ours = { server: 'plugin:litmark:clarity', provider: { plugin: PLUGIN } }
 
   expect(isOwnClarity(ours, PLUGIN)).toBe(true)
   // A Clarity the owner added themselves, under any name.
   expect(isOwnClarity({ ...ours, provider: { plugin: 'other' } }, PLUGIN)).toBe(false)
   expect(isOwnClarity({ ...ours, server: 'Microsoft Clarity' }, PLUGIN)).toBe(false)
   // The coach's own server.
-  expect(
-    isOwnClarity({ ...ours, server: 'plugin:visibility-coach:visibility-coach' }, PLUGIN),
-  ).toBe(false)
+  expect(isOwnClarity({ ...ours, server: 'plugin:litmark:litmark' }, PLUGIN)).toBe(false)
 })
 
-test('with nothing read yet the card says how to begin and can show an example', async ($, on) => {
+test('with nothing read yet the card says what to say and can show an example', async ($, on) => {
   mock.store(on)
 
   for (const surface of SURFACES) {
     const ui = await $.ui.mount({ ...pane(), surface })
 
     expect(await ui.find({ type: 'Text', text: /^See how customers find you$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Say "help me show up on Google"\.$/ })).toBeDefined()
     await ui.press({ key: 'example' })
     expect(await ui.find({ type: 'Text', text: /Example\. Not your business\./ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^Harbour Plumbing$/ })).toBeDefined()
