@@ -1,6 +1,6 @@
 ---
 name: visibility
-description: Visibility Coach helps a business owner get found by the right customers on Google, Google Maps and AI search (ChatGPT, Gemini, Perplexity, AI Overviews). Use when the owner says things like "help me show up on Google", "get more calls from my website", "make ChatGPT recommend us", "why do they recommend my competitor", "what should I fix on my website", "grill me", "let's re-align", "is this working", "just fix it for me", or "I only have ten minutes".
+description: Visibility Coach helps a business owner get found by the right customers on Google, Google Maps and AI search (ChatGPT, Gemini, Perplexity, AI Overviews). Use when the owner says things like "help me show up on Google", "get more calls from my website", "make ChatGPT recommend us", "why do they recommend my competitor", "what should I fix on my website", "grill me", "let's re-align on my business", "is my website work paying off", "just fix my website for me", or "I only have ten minutes for my website". Not for coding, debugging or general questions.
 ---
 
 # Visibility Coach

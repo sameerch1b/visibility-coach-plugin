@@ -36,7 +36,7 @@ It runs on your own Claude plan. A Visibility Coach plan unlocks the full coachi
 
 ## Privacy
 
-We store your business profile and your work history only. Your own Claude does the reading and writing; our server never crawls your site.
+We store your sign-in email, your business profile and your work history. Payments go through Shopify. Your own Claude does the reading and writing; our server never crawls your site. Full details: [privacy policy](https://visibility-coach.vercel.app/privacy).
 
 ## Start
 
