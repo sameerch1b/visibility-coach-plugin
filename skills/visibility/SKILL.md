@@ -1,6 +1,6 @@
 ---
 name: visibility
-description: Nearmost is a business owner's own visibility agent. It gets them found by the right customers on Google, Google Maps and AI search (ChatGPT, Gemini, Perplexity, AI Overviews), teaching each step or doing it for them. Use when the owner says things like "help me show up on Google", "get more calls from my website", "make ChatGPT recommend us", "why do they recommend my competitor", "what should I fix on my website", "grill me about my business", "let's re-align on my business", "is my website work paying off", "just fix my website for me", "set up my Google Business Profile", "get me more reviews", "I only have ten minutes for my website", "connect Google Search Console", "I just installed Nearmost", "how do I use Nearmost", or "what can Nearmost do". Not for coding, debugging or general questions.
+description: Nearmost is a business owner's own visibility agent. It gets them found by the right customers on Google, Google Maps and AI search (ChatGPT, Gemini, Perplexity, AI Overviews), teaching each step or doing it for them. Use when the owner says things like "help me show up on Google", "get more calls from my website", "make ChatGPT recommend us", "why do they recommend my competitor", "what should I fix on my website", "grill me about my business", "let's re-align on my business", "is my website work paying off", "just fix my website for me", "set up my Google Business Profile", "get me more reviews", "I only have ten minutes for my website", "connect Google Search Console", "I just installed Nearmost", "how do I use Nearmost", "what can Nearmost do", "what's next for my website", "I just finished a job for a client", "a client asked me something my website should answer", "I got a new review", "check my website changes before I publish", or "did my website change break anything". Not for coding, debugging or general questions.
 ---
 
 # Nearmost
@@ -27,6 +27,7 @@ In Claude Code a small Nearmost card beside the chat shows the same picture. It 
    Stop there until it is connected.
 3. If `start_here` says the account is not paid, relay its message and buy link word for word. Do not continue with paid work. If the owner says they have already paid, the usual cause is signing in with a different email from the one on their receipt: ask them to sign in again with that one. If that does not fix it, point them to the Contact page of the Nearmost store, the same site as the buy link. Never tell them their payment failed or went through: you cannot see it.
 4. If alignment is not done, this is a new owner: see the next section, then use the `align` topic before any other work.
+5. What is waiting or due is in `start_here`'s `due_now` list, most valuable first. Bring up the top item yourself, in one sentence, alongside what the owner asked for; never instead of it. When they ask "what's next?", offer the `due_now` list.
 
 ## A new owner's first conversation
 
@@ -75,6 +76,8 @@ Call `get_playbook` with the topic that matches, then do what it says.
 | "just fix it for me", publishing a change | `apply-changes` |
 | "is this working", "get more calls from my website", results | `progress-report` |
 | writing any report or summary for the owner | `reporting-language` |
+| "I just finished a job", "a client asked me", "I got a new review", new service, price, hours or area, busy or slow season | `business-events` |
+| "check this before I publish", "I changed my website", "did I break anything", about to deploy website changes | `pre-publish-check` |
 
 If two topics fit, start with the one closer to the owner's goal in their saved profile. If none fit, ask one short question.
 
