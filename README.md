@@ -2,7 +2,7 @@
 
 Your own visibility agent, inside the Claude you already use.
 It finds what stops the right customers from finding your business on Google and AI search.
-Then, for each fix, you choose: it shows you how, step by step, or it does it for you.
+Then it makes each fix for you, once you approve it. Prefer to do it yourself? It shows you how, step by step.
 Nothing goes live without your yes, and you can always see what was done and what happened.
 
 You talk to it in Claude, the way you would talk to a person you hired. There is nothing to learn and nothing to set up beyond signing in.
@@ -43,7 +43,7 @@ Or [open Claude with that already typed](https://claude.ai/new?q=Help%20me%20sho
 
 1. **A few questions about your business.** What you sell, where, and who to. One question at a time.
 2. **A first check of where you stand.** How you look today on Google search, Google Maps, reviews and AI assistants. It needs only your website address.
-3. **Your first fix.** The one change that would help most, with why it matters. Nearmost does it for you or shows you how. You approve it before anything goes live.
+3. **Your first fix.** The one change that would help most, with why it matters. You approve it, and Nearmost makes the change on your site.
 
 Stop whenever you like. Next time, Nearmost picks up where you left off.
 
@@ -56,18 +56,20 @@ You never need a command. These cover almost everything:
 | Say | What happens |
 |---|---|
 | "What's next?" | Your next step, how long it takes, and why it matters |
-| "Do it for me" | Nearmost does the step while you watch, and stops for your OK before saving |
+| "Approve" | Nearmost makes the change you just saw on your site |
 | "Show me how" | It walks you through the step one screen at a time |
 | "Is this working?" | Your numbers: where they were counted, and how they compare with where you started |
 | "What's waiting for my OK?" | Every change drafted and not yet approved |
 | "I only have ten minutes" | The most useful thing that fits in ten minutes |
 
-## Show me, or do it for me
+## You approve it, Nearmost makes it
 
-Every step can be done two ways. Just say which:
+Nearmost shows you each change exactly as it will appear. Say yes, and it makes the change on your site itself:
 
-- **Show me how.** It teaches you one screen at a time: what to open, what to click, what you should see next. This works anywhere you use Claude, including the phone app.
-- **Do it for me.** It does the step while you watch, then stops and shows you the exact result before anything is saved or published. This needs a Claude that can act for you on your computer: a connected website platform, Claude in Chrome, or computer use in the Claude desktop app. Which of these you have depends on your Claude plan and app.
+- **Built your site with Claude?** It edits your site's code (in Claude Code, or through a GitHub connection) and publishes it the way your site already publishes.
+- **On WordPress, Shopify, Wix, Webflow or Squarespace?** It makes the change through that connection, or in your site's editor with Claude in Chrome.
+
+Rather do it yourself? Say "show me how" and it walks you through one screen at a time. On the phone app, where Claude can't reach your site, it gives you the steps instead.
 
 It never types your passwords or sign-in codes, never pays for anything, and never writes or posts a review.
 
@@ -76,7 +78,7 @@ It never types your passwords or sign-in codes, never pays for anything, and nev
 - **No sign-in email.** It arrives within a minute. Check your spam folder, and check you typed the email you bought Nearmost with.
 - **It says you have no plan, and you have paid.** You signed in with a different email from the one on your receipt. Sign in again with that one.
 - **Claude does not seem to know Nearmost.** Start a new chat. In claude.ai, click the **+** in the message box, choose Connectors, and check Nearmost is switched on.
-- **"Do it for me" says it cannot here.** That Claude cannot act on your computer. Say "show me how", or use Claude in Chrome or the Claude desktop app.
+- **It gives you steps instead of making the change.** That Claude cannot reach your site, as on the phone app. Use Claude Code, the Claude desktop app, or Claude in Chrome, or connect your site's GitHub or website platform to Claude.
 - **Anything else.** Use the Contact page of the Nearmost store.
 
 ## Your card (Claude Code)
