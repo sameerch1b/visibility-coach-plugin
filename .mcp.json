@@ -2,7 +2,7 @@
   "mcpServers": {
     "nearmost": {
       "type": "http",
-      "url": "https://visibility-coach.vercel.app/mcp"
+      "url": "https://mcp.nearmost.io/mcp"
     },
     "clarity": {
       "command": "npx",

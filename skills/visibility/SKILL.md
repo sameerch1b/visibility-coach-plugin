@@ -22,7 +22,7 @@ In Claude Code a small Nearmost card beside the chat shows the same picture. It 
 1. Call the `start_here` tool from the Nearmost connector first, before anything else. The connector is listed as `nearmost`; an owner who added it themselves may have it under another name, such as `visibility-coach`.
 2. If the tool is missing or not signed in, tell the owner how to connect, in as few words as it takes:
    - Claude Code: type `/mcp`, choose `nearmost`, and sign in.
-   - claude.ai, the Claude desktop app or the phone app: open this link and click Add, then Connect. It opens Claude's own "Add custom connector" box with Nearmost filled in: `https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=Nearmost&connectorUrl=https%3A%2F%2Fvisibility-coach.vercel.app%2Fmcp`
+   - claude.ai, the Claude desktop app or the phone app: open this link and click Add, then Connect. It opens Claude's own "Add custom connector" box with Nearmost filled in: `https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=Nearmost&connectorUrl=https%3A%2F%2Fmcp.nearmost.io%2Fmcp`
    - Either way, they sign in with the email they bought Nearmost with, by clicking the link we email them. There is no password.
    Stop there until it is connected.
 3. If `start_here` says the account is not paid, relay its message and buy link word for word. Do not continue with paid work. If the owner says they have already paid, the usual cause is signing in with a different email from the one on their receipt: ask them to sign in again with that one. If that does not fix it, point them to the Contact page of the Nearmost store, the same site as the buy link. Never tell them their payment failed or went through: you cannot see it.

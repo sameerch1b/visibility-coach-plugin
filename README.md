@@ -15,11 +15,11 @@ Three steps. About two minutes.
 
 **claude.ai, the Claude desktop app, or the Claude app on your phone**
 
-[Add Nearmost to Claude](https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=Nearmost&connectorUrl=https%3A%2F%2Fvisibility-coach.vercel.app%2Fmcp)
+[Add Nearmost to Claude](https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=Nearmost&connectorUrl=https%3A%2F%2Fmcp.nearmost.io%2Fmcp)
 
 The link opens Claude's own "Add custom connector" box with Nearmost already filled in. Click **Add**. Adding it once makes it available on your computer and your phone.
 
-On a Team or Enterprise plan, an owner adds it once for everyone with [this link](https://claude.ai/admin-settings/connectors?modal=add-custom-connector&connectorName=Nearmost&connectorUrl=https%3A%2F%2Fvisibility-coach.vercel.app%2Fmcp). Each person then opens Customize > Connectors and clicks Connect.
+On a Team or Enterprise plan, an owner adds it once for everyone with [this link](https://claude.ai/admin-settings/connectors?modal=add-custom-connector&connectorName=Nearmost&connectorUrl=https%3A%2F%2Fmcp.nearmost.io%2Fmcp). Each person then opens Customize > Connectors and clicks Connect.
 
 **Claude Code**
 
@@ -121,7 +121,7 @@ It runs on your own Claude plan. A Nearmost plan unlocks the full coaching; Clau
 
 ## Privacy
 
-We store your sign-in email, your business profile and your work history. Payments go through Shopify. Your own Claude does the reading and writing; our server never crawls your site. Full details: [privacy policy](https://visibility-coach.vercel.app/privacy).
+We store your sign-in email, your business profile and your work history. Payments go through Shopify. Your own Claude does the reading and writing; our server never crawls your site. Full details: [privacy policy](https://mcp.nearmost.io/privacy).
 
 ---
 

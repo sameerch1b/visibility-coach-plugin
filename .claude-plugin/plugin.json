@@ -20,7 +20,7 @@
     "google-business-profile",
     "reviews"
   ],
-  "privacyPolicyUrl": "https://visibility-coach.vercel.app/privacy",
+  "privacyPolicyUrl": "https://mcp.nearmost.io/privacy",
   "types": "./types/index.d.ts",
   "userConfig": {
     "clarity_api_token": {
