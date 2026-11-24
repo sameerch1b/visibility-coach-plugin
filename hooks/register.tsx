@@ -84,7 +84,7 @@ const isSigningIn = atom(
 const hasBegun = atom({ plugin: 'nearmost', key: 'hasBegun' } as const, false)
 
 // Said once, the first time after installing.
-const WELCOME = 'Nearmost is ready. Say "help me show up on Google" to begin.'
+const WELCOME = 'Nearmost is ready. Say "Nearmost, help me show up on Google" to begin.'
 
 // Shown only on the owner's press, under a banner that says it is one.
 const EXAMPLE: CoachPanel = {
@@ -615,7 +615,7 @@ const full = (
             ) : (
               shown?.next === undefined &&
               !isUnderWay && (
-                <Text size="footnote">Say "help me show up on Google".</Text>
+                <Text size="footnote">Say "Nearmost, help me show up on Google".</Text>
               )
             )}
           </Box>
@@ -685,7 +685,7 @@ const glance = (
   } else if (how !== 'on' && how !== 'unknown') {
     note = 'Sign in to start'
   } else if (shown === null && !isUnderWay) {
-    note = 'Say "help me show up on Google"'
+    note = 'Say "Nearmost, help me show up on Google"'
   }
 
   return (

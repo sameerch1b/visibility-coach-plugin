@@ -1,7 +1,7 @@
 {
   "name": "nearmost",
   "displayName": "Nearmost",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Your own visibility agent, inside the Claude you already use. It finds what stops customers from finding you on Google and AI search, then makes each fix on your site once you approve it. Nothing goes live without your yes.",
   "author": {
     "name": "Sameer Chib"

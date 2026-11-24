@@ -352,7 +352,7 @@ test('with nothing read yet the card says what to say and can show an example', 
     const ui = await $.ui.mount({ ...pane(), surface })
 
     expect(await ui.find({ type: 'Text', text: /^See how customers find you$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^Say "help me show up on Google"\.$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^Say "Nearmost, help me show up on Google"\.$/ })).toBeDefined()
     // And what saying it starts.
     expect(await ui.find({ type: 'Text', text: /^Then, in about ten minutes:$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^1\. A few questions about your business\.$/ })).toBeDefined()
@@ -398,7 +398,7 @@ test('the first session after installing says how to begin, once', async ($, on)
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
 
-  expect(said).toEqual(['Nearmost is ready. Say "help me show up on Google" to begin.'])
+  expect(said).toEqual(['Nearmost is ready. Say "Nearmost, help me show up on Google" to begin.'])
 })
 
 test('once the owner has talked to Nearmost the card stops saying how to begin', async ($, on) => {
@@ -462,6 +462,6 @@ test('the small card says what to say before the owner has started', async ($, o
   const small = await $.ui.mount({ ...pane('widget'), surface: 'desktop' })
 
   expect(await small.find({ type: 'Text', text: /^Nearmost$/ })).toBeDefined()
-  expect(await small.find({ type: 'Text', text: /^Say "help me show up on Google"$/ })).toBeDefined()
+  expect(await small.find({ type: 'Text', text: /^Say "Nearmost, help me show up on Google"$/ })).toBeDefined()
   await small.unmount()
 })

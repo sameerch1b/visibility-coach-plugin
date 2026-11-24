@@ -35,9 +35,9 @@ Click **Connect** when Claude offers it (in Claude Code, type `/mcp` and choose 
 
 Start a new chat and say:
 
-> help me show up on Google
+> Nearmost, help me show up on Google
 
-Or [open Claude with that already typed](https://claude.ai/new?q=Help%20me%20show%20up%20on%20Google) and press send.
+Or [open Claude with that already typed](https://claude.ai/new?q=Nearmost%2C%20help%20me%20show%20up%20on%20Google) and press send.
 
 ## Your first ten minutes
 
