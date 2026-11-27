@@ -252,7 +252,7 @@ const findPanel = (result: unknown, modelText?: string): unknown => {
 const coachTool = (tool: string): string | undefined => {
   const [, server = '', name] = /^mcp__(.+?)__(.+)$/.exec(tool) ?? []
 
-  return /nearmost|litmark|visibility[-_ ]?coach/i.test(server) ? name : undefined
+  return /nearmost|visibility[-_ ]?coach/i.test(server) ? name : undefined
 }
 
 /** Whether a server about to join the session is the Microsoft Clarity entry
