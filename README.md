@@ -1,17 +1,17 @@
 # Nearmost
 
-Your own visibility agent, inside the Claude you already use.
+Your own visibility agent, inside the Claude or ChatGPT you already use.
 It finds what stops the right customers from finding your business on Google and AI search.
 Then it makes each fix for you, once you approve it. Prefer to do it yourself? It shows you how, step by step.
 Nothing goes live without your yes, and you can always see what was done and what happened.
 
-You talk to it in Claude, the way you would talk to a person you hired. There is nothing to learn and nothing to set up beyond signing in.
+You talk to it in Claude or ChatGPT, the way you would talk to a person you hired. There is nothing to learn and nothing to set up beyond signing in.
 
 ## Get started
 
 Three steps. About two minutes.
 
-### 1. Add Nearmost to Claude
+### 1. Add Nearmost to Claude or ChatGPT
 
 **claude.ai, the Claude desktop app, or the Claude app on your phone**
 
@@ -20,6 +20,13 @@ Three steps. About two minutes.
 The link opens Claude's own "Add custom connector" box with Nearmost already filled in. Click **Add**. Adding it once makes it available on your computer and your phone.
 
 On a Team or Enterprise plan, an owner adds it once for everyone with [this link](https://claude.ai/admin-settings/connectors?modal=add-custom-connector&connectorName=Nearmost&connectorUrl=https%3A%2F%2Fmcp.nearmost.io%2Fmcp). Each person then opens Customize > Connectors and clicks Connect.
+
+**ChatGPT (Plus or higher, on chatgpt.com)**
+
+1. Open [Plugins](https://chatgpt.com/plugins), choose **Add**, then **Add custom MCP server**.
+2. Name it Nearmost and paste `https://mcp.nearmost.io/mcp` as the Server URL. Leave Authentication on OAuth.
+3. Tick **I understand and want to continue**, then **Create as a plugin**.
+4. In a chat, type **@Nearmost** to use it.
 
 **Claude Code**
 
@@ -37,7 +44,7 @@ Start a new chat and say:
 
 > Nearmost, help me show up on Google
 
-Or [open Claude with that already typed](https://claude.ai/new?q=Nearmost%2C%20help%20me%20show%20up%20on%20Google) and press send.
+In ChatGPT, start with @Nearmost. Or [open Claude with that already typed](https://claude.ai/new?q=Nearmost%2C%20help%20me%20show%20up%20on%20Google) and press send.
 
 ## Your first ten minutes
 
